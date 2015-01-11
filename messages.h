@@ -68,6 +68,10 @@ struct opponent_left_msg {
 	short dummy;
 };
 
+struct leave_game_msg {
+	short dummy;
+};
+
 struct game_msg {
 	short msg_type;
 	union msg {
@@ -80,6 +84,7 @@ struct game_msg {
 		struct invalid_move_msg invalid_move;
 		struct game_end_msg game_end;
 		struct opponent_left_msg opponent_left;
+		struct leave_game_msg leave_game;
 	} message;
 };
 

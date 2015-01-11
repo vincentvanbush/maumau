@@ -10,6 +10,7 @@ const short OPPONENT_TURN = 15;
 const short INVALID_MOVE = 16;
 const short GAME_END = 17;
 const short OPPONENT_LEFT = 18;
+const short LEAVE_GAME = 19;
 
 const short KING = 20;
 const short QUEEN = 21;

@@ -1,17 +1,25 @@
 #ifndef MESSAGES_H
 #define MESSAGES_H
 
-#define JOIN_MESSAGE 100
+#define JOIN 10
+#define WAITING_FOR_OPPONENT 11
+#define START_GAME 12
+#define GAME_FULL 13
+#define MOVE 14
+#define OPPONENT_TURN 15
+#define INVALID_MOVE 16
+#define GAME_END 17
+#define OPPONENT_LEFT 18
 
-#define KING 200
-#define QUEEN 201
-#define ACE 202
-#define JACK 203
+#define KING 20
+#define QUEEN 21
+#define ACE 22
+#define JACK 23
 
-#define HEART 300
-#define TILE 301
-#define CLOVER 302
-#define PIKE 303
+#define HEART 30
+#define TILE 31
+#define CLOVER 32
+#define PIKE 33
 
 struct card {
 	short value;

@@ -1,25 +1,25 @@
 #ifndef MESSAGES_H
 #define MESSAGES_H
 
-const int JOIN = 10;
-const int WAITING_FOR_OPPONENT = 11;
-const int START_GAME = 12;
-const int GAME_FULL = 13;
-const int MOVE = 14;
-const int OPPONENT_TURN = 15;
-const int INVALID_MOVE = 16;
-const int GAME_END = 17;
-const int OPPONENT_LEFT = 18;
+const short JOIN = 10;
+const short WAITING_FOR_OPPONENT = 11;
+const short START_GAME = 12;
+const short GAME_FULL = 13;
+const short MOVE = 14;
+const short OPPONENT_TURN = 15;
+const short INVALID_MOVE = 16;
+const short GAME_END = 17;
+const short OPPONENT_LEFT = 18;
 
-const int KING = 20;
-const int QUEEN = 21;
-const int ACE = 22;
-const int JACK = 23;
+const short KING = 20;
+const short QUEEN = 21;
+const short ACE = 22;
+const short JACK = 23;
 
-const int HEART = 30;
-const int TILE = 31;
-const int CLOVER = 32;
-const int PIKE = 33;
+const short HEART = 30;
+const short TILE = 31;
+const short CLOVER = 32;
+const short PIKE = 33;
 
 struct card {
 	short value;
@@ -69,7 +69,7 @@ struct opponent_left_msg {
 };
 
 struct game_msg {
-	int msg_type;
+	short msg_type;
 	union msg {
 		struct join_game_msg join_game;
 		struct waiting_for_opponent_msg waiting_for_opponent;

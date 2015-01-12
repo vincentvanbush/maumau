@@ -1,16 +1,18 @@
 #ifndef MESSAGES_H
 #define MESSAGES_H
 
-const short JOIN = 10;
-const short WAITING_FOR_OPPONENT = 11;
-const short START_GAME = 12;
-const short GAME_FULL = 13;
-const short MOVE = 14;
-const short OPPONENT_TURN = 15;
-const short INVALID_MOVE = 16;
-const short GAME_END = 17;
-const short OPPONENT_LEFT = 18;
-const short LEAVE_GAME = 19;
+const short JOIN_GAME = 0;
+const short READY = 1;
+const short LEAVE_GAME = 2;
+const short CANNOT_JOIN = 3;
+const short JOIN_OK = 4;
+const short PLAYER_JOINED = 5;
+const short START_GAME = 6;
+const short NEXT_TURN = 7;
+const short INVALID_MOVE = 8;
+const short GAME_END = 9;
+const short PLAYER_LEFT = 10;
+const short MOVE = 11;
 
 const short KING = 20;
 const short QUEEN = 21;
@@ -27,22 +29,7 @@ struct card {
 	short color;
 };
 
-struct join_game_msg {
-	char player_name[30];
-};
-
-struct waiting_for_opponent_msg {
-	short dummy;
-};
-
-struct start_game_msg {
-	struct card player_cards[52];
-	card first_card_in_stack;
-};
-
-struct game_full_msg {
-	short dummy;
-};
+// Sent by both client and server
 
 struct move_msg {
 	struct card played_cards[4];
@@ -53,19 +40,14 @@ struct move_msg {
 	struct card cards_picked_up[20];
 };
 
-struct opponent_turn_msg {
-	struct card cards_picked_up[20];
+// Sent by client
+
+struct join_game_msg {
+	char player_name[30];
+	int game_id;
 };
 
-struct invalid_move_msg {
-	short dummy;
-};
-
-struct game_end_msg {
-	char winner_name[30];
-};
-
-struct opponent_left_msg {
+struct ready_msg {
 	short dummy;
 };
 
@@ -73,19 +55,63 @@ struct leave_game_msg {
 	short dummy;
 };
 
+// Sent by server
+
+struct cannot_join_msg {
+	short dummy;
+};
+
+struct join_ok_msg {
+	short slot_number;
+	int player_token;
+	int game_token;
+};
+
+struct player_joined_msg {
+	char player_name[30];
+	short slot_number;
+};
+
+struct start_game_msg {
+	struct card player_cards[52];
+	card first_card_in_stack;
+};
+
+struct next_turn_msg {
+	char player_name[30];
+	short cards_picked_up;
+	struct card cards[30];
+};
+
+struct invalid_move_msg {
+	short dummy;
+};
+
+struct game_end_msg {
+	short dummy;
+};
+
+struct player_left_msg {
+	char player_name[30];
+};
+
 struct game_msg {
 	short msg_type;
+	int token;
+	int game_token;
 	union msg {
-		struct join_game_msg join_game;
-		struct waiting_for_opponent_msg waiting_for_opponent;
-		struct start_game_msg start_game;
-		struct game_full_msg game_full;
-		struct move_msg move;
-		struct opponent_turn_msg opponent_turn;
-		struct invalid_move_msg invalid_move;
-		struct game_end_msg game_end;
-		struct opponent_left_msg opponent_left;
-		struct leave_game_msg leave_game;
+		struct join_game_msg		join_game;
+		struct ready_msg			ready;
+		struct leave_game_msg		leave_game;
+		struct cannot_join_msg		cannot_join;
+		struct join_ok_msg			join_ok;
+		struct player_joined_msg	player_joined;
+		struct start_game_msg		start_game;
+		struct next_turn_msg		next_turn;
+		struct invalid_move_msg		invalid_move;
+		struct game_end_msg			game_end;
+		struct player_left_msg		player_left;
+		struct move_msg 			move;
 	} message;
 };
 

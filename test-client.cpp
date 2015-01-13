@@ -29,6 +29,14 @@ int main(int argc, char* argv[]) {
 		printf("Enter game id ");
 		scanf("%d", &msg_buffer.message.join_game.game_id);
 	}
+
+	else if (msg_buffer.msg_type == READY) {
+		printf("Enter your player token ");
+		scanf("%d", &msg_buffer.token);
+		printf("Enter your game token ");
+		scanf("%d", &msg_buffer.game_token);
+		
+	}
 	
 
 	// Create client address info
@@ -78,6 +86,13 @@ int main(int argc, char* argv[]) {
 				}
 			}
 		}
+	}
+
+	else if (msg_buffer.msg_type == JOIN_OK) {
+		struct join_ok_msg join_ok = msg_buffer.message.join_ok;
+		int player_token = join_ok.player_token;
+		int game_token = join_ok.game_token;
+		printf("Player token: %d\nGame token: %d\n", player_token, game_token);
 	}
 
 

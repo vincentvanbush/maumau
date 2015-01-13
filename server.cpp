@@ -109,6 +109,47 @@ void *main_loop(void *arg) {
 
 		case READY: {
 			printf("Received ready message\n");
+			int player_token = msg_buffer.token;
+			int game_token = msg_buffer.game_token;
+			struct ready_msg ready_msg = msg_buffer.message.ready;
+
+			struct game_info* game = games[msg_buffer.game_id];
+
+			// if received game token is different to the actual one, send error
+			if (game -> game_token != game_token) {
+				// TODO: send error message to client
+				break;	
+			}
+
+			// check if received player token is valid
+			bool invalid_player_token = true;
+			short player_index = -1;
+			for (int i = 0; i < game -> players.size(); i++) {
+				if (game -> players[i] -> token == player_token) {
+					invalid_player_token = false;
+					player_index = i;
+					break;
+				}
+			}
+			if (invalid_player_token) {
+				// TODO: send error message to client
+				break;
+			}
+
+			game -> players[player_index] -> ready = true;
+
+			if (game -> players.size() >= 2) {
+				short ready_players = 0;
+				for (int i = 0; i < game -> players.size(); i++)
+					if (game -> players[i] -> ready)
+						++ready_players;
+				if (ready_players == game -> players.size()) {
+					// all players are ready, so deal the cards and start the game
+					printf("START GAME!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+				}
+			}
+			
+
 		}
 		break;
 

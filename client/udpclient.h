@@ -23,18 +23,35 @@ public:
     void sendRequestGamesMessage();
     void sendJoinGameMessage(std::string);
 
+    void gameListSignalHandle(struct game_list_msg);
+
+    // information about existing games
+    bool gameExists[50];
+    int gameId[50];
+    short playersCount[50];
+    char playerNick[50][4][30];
+    bool started[50];
+
 //private slots:
 public slots:
     void readMessage();
 
+
+
+
+
+
+
 signals:
+    void cannotJoinSignal();
     void joinOKSignal(int);
-
-
-
-
-
-
+    void playerJoinedSignal();
+    void starGameSignal();
+    void nextTurnSignal();
+    void invalidMoveSignal();
+    void gameEndSignal();
+    void playerLeftSignal();
+    void gameListSignal();
 
 
 private:

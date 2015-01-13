@@ -8,9 +8,13 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     udpClient = new UdpClient();
 
+    // signals from interface
     connect(ui->requestGamesButton, SIGNAL(clicked()), this, SLOT(onRequestGamesButtonClicked()));
     connect(ui->joinGameButton, SIGNAL(clicked()), this, SLOT(onJoinGameButtonClicked()));
+
+    // reacting on messages from server
     connect(udpClient, SIGNAL(joinOKSignal(int)), this, SLOT(onJoinOKMessageRecv(int)));
+    connect(udpClient, SIGNAL(gameListSignal()), this, SLOT(onGameListMessageRecv()));
 }
 
 MainWindow::~MainWindow()
@@ -27,7 +31,7 @@ void MainWindow::onRequestGamesButtonClicked()
 
 void MainWindow::onJoinGameButtonClicked()
 {
-    std::string playerName;
+    std::string playerName = "Mat";
     udpClient->sendJoinGameMessage(playerName);
 }
 
@@ -40,4 +44,35 @@ void MainWindow::onJoinOKMessageRecv(int messType)
     ui->plainTextEdit->appendPlainText(messT);
     ui->lineEdit->setText((QString) messType);
     //(const QString) messType
+}
+
+void MainWindow::onGameListMessageRecv()
+{
+    QString gameId;
+    QString playersCount;
+    QString playerName;
+
+    for(int i=0; i<50; i++) {
+        if(udpClient->gameExists[i]) {
+            gameId = QString::number(udpClient->gameId[i]);
+            qDebug() << "gameid" << gameId;
+            playersCount = QString::number(udpClient->playersCount[i]);
+            qDebug() << "playersCount" << playersCount;
+            ui->plainTextEdit->appendPlainText("Game id: " + gameId + "\tplayers: " + playersCount);
+            if(udpClient->started[i]) {
+                ui->plainTextEdit->appendPlainText("Game in progress");
+            }
+            else {
+                ui->plainTextEdit->appendPlainText("Game not started");
+            }
+            for(int j=0; j<udpClient->playersCount[i]; j++) {
+
+
+                //playerName = QString::fromUtf16( (ushort*) udpClient->playerNick[i][j]);
+                //playerName = QString(QLatin1String(udpClient->playerNick[i][j]));
+                playerName = QString::fromUtf8(udpClient->playerNick[i][j]);
+                ui->plainTextEdit->appendPlainText(playerName);
+            }
+        }
+    }
 }

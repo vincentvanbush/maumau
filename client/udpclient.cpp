@@ -27,8 +27,30 @@ void UdpClient::readMessage()
     qDebug() << messageType;
 
 
-    //
-    if(messageType == JOIN_OK) { //
+    switch(messageType) {
+    case CANNOT_JOIN:
+        break;
+    case JOIN_OK:
+        break;
+    case PLAYER_JOINED:
+        break;
+    case START_GAME:
+        break;
+    case NEXT_TURN:
+        break;
+    case INVALID_MOVE:
+        break;
+    case GAME_END:
+        break;
+    case PLAYER_LEFT:
+        break;
+    case GAME_LIST:
+        this->gameListSignalHandle(gameMessage.message.game_list);
+        this->gameListSignal();
+        break;
+    }
+
+    if(messageType == JOIN_OK) {
         joinOKSignal(messageType);
     }
 
@@ -55,3 +77,17 @@ void UdpClient::sendRequestGamesMessage()
 
     this->socket->writeDatagram((const char*) &msg, sizeof(msg), QHostAddress(serverIPAddress), serverPort);
 }
+
+void UdpClient::gameListSignalHandle(struct game_list_msg gameList)
+{
+    for(int i=0; i<50; i++) {
+        gameExists[i] = gameList.game_exists[i];
+        gameId[i] = gameList.game_id[i];
+        playersCount[i] = gameList.players_count[i];
+        for(int j=0; j<playersCount[i]; j++) {
+            strcpy(playerNick[i][j], gameList.player_nick[i][j]);
+        }
+        started[i] = gameList.started[i];
+    }
+}
+

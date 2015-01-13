@@ -24,6 +24,7 @@ public slots:
     void onJoinGameButtonClicked();
 
     void onJoinOKMessageRecv(int);
+    void onGameListMessageRecv();
 
 
 

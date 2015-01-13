@@ -13,8 +13,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->joinGameButton, SIGNAL(clicked()), this, SLOT(onJoinGameButtonClicked()));
 
     // reacting on messages from server
-    connect(udpClient, SIGNAL(joinOKSignal(int)), this, SLOT(onJoinOKMessageRecv(int)));
+    connect(udpClient, SIGNAL(joinOKSignal()), this, SLOT(onJoinOKMessageRecv()));
     connect(udpClient, SIGNAL(gameListSignal()), this, SLOT(onGameListMessageRecv()));
+    connect(udpClient, SIGNAL(cannotJoinSignal()), this, SLOT(onCannotJoinMessageRecv()));
 }
 
 MainWindow::~MainWindow()
@@ -35,15 +36,24 @@ void MainWindow::onJoinGameButtonClicked()
     udpClient->sendJoinGameMessage(playerName);
 }
 
-void MainWindow::onJoinOKMessageRecv(int messType)
+void MainWindow::onJoinOKMessageRecv()
 {
-    qDebug() << "received messtype " << messType;
+    //qDebug() << "received messtype " << messType;
 
-    QString messT = QString::number(messType);
+    //QString messT = QString::number(messType);
 
-    ui->plainTextEdit->appendPlainText(messT);
-    ui->lineEdit->setText((QString) messType);
-    //(const QString) messType
+    //ui->plainTextEdit->appendPlainText(messT);
+    //ui->lineEdit->setText((QString) messType);
+
+    QString slotNumber = QString::number(udpClient->slotNumber);
+    QString playerToken = QString::number(udpClient->playerToken);
+    QString gameToken = QString::number(udpClient->gameToken);
+
+
+    ui->plainTextEdit->appendPlainText("Player slot in game: " + slotNumber);
+    ui->plainTextEdit->appendPlainText("Player token: " + playerToken);
+    ui->plainTextEdit->appendPlainText("gameToken" + gameToken);
+
 }
 
 void MainWindow::onGameListMessageRecv()
@@ -55,9 +65,7 @@ void MainWindow::onGameListMessageRecv()
     for(int i=0; i<50; i++) {
         if(udpClient->gameExists[i]) {
             gameId = QString::number(udpClient->gameId[i]);
-            qDebug() << "gameid" << gameId;
             playersCount = QString::number(udpClient->playersCount[i]);
-            qDebug() << "playersCount" << playersCount;
             ui->plainTextEdit->appendPlainText("Game id: " + gameId + "\tplayers: " + playersCount);
             if(udpClient->started[i]) {
                 ui->plainTextEdit->appendPlainText("Game in progress");
@@ -66,13 +74,14 @@ void MainWindow::onGameListMessageRecv()
                 ui->plainTextEdit->appendPlainText("Game not started");
             }
             for(int j=0; j<udpClient->playersCount[i]; j++) {
-
-
-                //playerName = QString::fromUtf16( (ushort*) udpClient->playerNick[i][j]);
-                //playerName = QString(QLatin1String(udpClient->playerNick[i][j]));
                 playerName = QString::fromUtf8(udpClient->playerNick[i][j]);
                 ui->plainTextEdit->appendPlainText(playerName);
             }
         }
     }
+}
+
+void MainWindow::onCannotJoinMessageRecv()
+{
+    ui->plainTextEdit->appendPlainText("Game full. Cannot join");
 }

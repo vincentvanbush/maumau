@@ -24,6 +24,7 @@ public:
     void sendJoinGameMessage(std::string);
 
     void gameListSignalHandle(struct game_list_msg);
+    void joinOKSignalHandle(struct join_ok_msg);
 
     // information about existing games
     bool gameExists[50];
@@ -31,6 +32,11 @@ public:
     short playersCount[50];
     char playerNick[50][4][30];
     bool started[50];
+
+    // information about current game
+    short slotNumber;
+    int playerToken;
+    int gameToken;
 
 //private slots:
 public slots:
@@ -44,13 +50,15 @@ public slots:
 
 signals:
     void cannotJoinSignal();
-    void joinOKSignal(int);
+    void joinOKSignal();
+
     void playerJoinedSignal();
     void starGameSignal();
     void nextTurnSignal();
     void invalidMoveSignal();
     void gameEndSignal();
     void playerLeftSignal();
+
     void gameListSignal();
 
 

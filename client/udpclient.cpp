@@ -29,8 +29,11 @@ void UdpClient::readMessage()
 
     switch(messageType) {
     case CANNOT_JOIN:
+        this->cannotJoinSignal();
         break;
     case JOIN_OK:
+        this->joinOKSignalHandle(gameMessage.message.join_ok);
+        this->joinOKSignal();
         break;
     case PLAYER_JOINED:
         break;
@@ -50,9 +53,9 @@ void UdpClient::readMessage()
         break;
     }
 
-    if(messageType == JOIN_OK) {
-        joinOKSignal(messageType);
-    }
+//    if(messageType == JOIN_OK) {
+//        joinOKSignal(messageType);
+//    }
 
 }
 
@@ -89,5 +92,12 @@ void UdpClient::gameListSignalHandle(struct game_list_msg gameList)
         }
         started[i] = gameList.started[i];
     }
+}
+
+void UdpClient::joinOKSignalHandle(struct join_ok_msg joinOK)
+{
+    this->slotNumber = joinOK.slot_number;
+    this->playerToken = joinOK.player_token;
+    this->gameToken = joinOK.game_token;
 }
 

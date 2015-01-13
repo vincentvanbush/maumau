@@ -39,23 +39,18 @@ struct game_info* new_game(int id) {
 	return ret;
 }
 
-struct player_info new_player (char* player_name) {
-	struct player_info ret;
+struct player_info* new_player (char* player_name) {
+	struct player_info* ret = new struct player_info;
 
-	ret.token = rand();
-	strcpy (ret.player_name, player_name);
-	ret.ready = false;
+	ret -> token = rand();
+	strcpy (ret -> player_name, player_name);
+	ret -> ready = false;
+
+	return ret;
 }
 
-bool player_join_game (struct player_info* player, struct game_info* game) {
-	if (game->players.size() >= 4)
-		return false;
-	if (game->started)
-		return false;
-
+void player_join_game (struct player_info* player, struct game_info* game) {
 	game->players.push_back(player);
-
-	return true;
 }
 
 void deal_cards (struct game_info* game) {

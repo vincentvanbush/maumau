@@ -22,7 +22,7 @@ void *main_loop(void *arg) {
 	std::map <int, struct game_info*> games;
 	std::map <std::string, struct player_info*> players;
 
-
+	int games_num = 0;
 
 	struct game_msg msg_buffer;
 
@@ -42,39 +42,76 @@ void *main_loop(void *arg) {
 		int msg_type = msg_buffer.msg_type;
 		printf("(%d) ", msg_type);
 		switch (msg_type) {
+
 		case JOIN_GAME: {
 			printf("Received join game message from %s\n", msg_buffer.message.join_game.player_name);
 			struct join_game_msg msg = msg_buffer.message.join_game;
-			
+			struct game_info* game;
 			if (games[msg.game_id] == nullptr) {
 				// Game does not exist yet, we have to create it
 				printf("--- Game %d does not exist yet\n", msg.game_id);
-				games[msg.game_id] = new_game(msg.game_id);
+				if (games_num > 49) {
+					printf("--- Can't create game - server is full\n");
+					break;
+				}
+				game = new_game(msg.game_id);
+				games[msg.game_id] = game;
+				games_num++;
 			}
 			else {
 				// Game exists. Let the player join or send him an error.
 				printf("--- %s wants to join game %d\n", msg.player_name, msg.game_id);
+				if (game -> started || game -> players.size() >= 4) {
+					puts("--- Cannot join this game");
+					struct game_msg error_msg;
+					error_msg.msg_type = CANNOT_JOIN;
+					socklen_t tolen = sizeof cl_addr;
+					if (sendto (srv_socket, &error_msg, sizeof error_msg, 0, (struct sockaddr*) &cl_addr, tolen) < 0) {
+						perror ("Error sending CANNOT_JOIN to client socket");
+						exit (EXIT_FAILURE);
+					}
+					else {
+						printf("Sent CANNOT_JOIN to client\n");
+					}
+					break;
+				}
 			}
+			game = games[msg.game_id];
+			struct player_info* player = new_player (msg.player_name);
+			player_join_game (player, game);
 
-			new_game (1);
+			struct game_msg join_ok_msg;
+			join_ok_msg.msg_type = JOIN_OK;
+			puts("--- Join OK");
+			socklen_t tolen = sizeof cl_addr;
+			if (sendto (srv_socket, &join_ok_msg, sizeof join_ok_msg, 0, (struct sockaddr*) &cl_addr, tolen) < 0) {
+				perror ("Error sending JOIN_OK to client socket");
+				exit (EXIT_FAILURE);
 			}
-			break;
+			else printf("Sent JOIN_OK to client\n");
+			
+		}
+		break;
 		
 		case MOVE: {
 			printf("Received move message\n");
-			}
-			break;
+		}
+		break;
+
 		case LEAVE_GAME: {
 			printf("Received leave game message\n");
-			}
-			break;
+		}
+		break;
+
 		case READY: {
 			printf("Received ready message\n");
-			}
-			break;
+		}
+		break;
+
 		default: {
 			printf("Unrecognized message type %d\n", msg_type);
-			}
+		}
+
 		}
 	}
 

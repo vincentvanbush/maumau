@@ -18,11 +18,14 @@ ushort server_port = 1234;
 int main(int argc, char* argv[]) {
 	// define message
 	struct game_msg msg_buffer;
+	printf("Enter message type: ");
 	scanf("%hu", &msg_buffer.msg_type);
 
 	if (msg_buffer.msg_type == 0) {
-		strcpy(msg_buffer.message.join_game.player_name, "Ziutek");
-		msg_buffer.message.join_game.game_id = 123;
+		printf("Enter player name ");
+		scanf("%s", &msg_buffer.message.join_game.player_name);
+		printf("Enter game id ");
+		scanf("%d", &msg_buffer.message.join_game.game_id);
 	}
 
 	// Create client address info

@@ -4,12 +4,14 @@
 #include "messages.h"
 #include <deque>
 #include <vector>
+#include <netinet/in.h>
 
 struct player_info {
 	int token;
 	char player_name[30];
 	bool ready;
 	std::vector<struct card> cards;
+	struct sockaddr_in net_addr;
 };
 
 struct game_info {

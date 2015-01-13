@@ -80,6 +80,7 @@ void *main_loop(void *arg) {
 			game = games[msg.game_id];
 			struct player_info* player = new_player (msg.player_name);
 			player_join_game (player, game);
+			player -> net_addr = cl_addr;
 
 			struct game_msg join_ok_msg;
 			join_ok_msg.msg_type = JOIN_OK;
@@ -129,15 +130,7 @@ void *main_loop(void *arg) {
 					game_list.started[i] = games[i] -> started;
 				}
 			}
-/*
-			for (int i = 0; i < MAX_GAME_NUM; i++) {
-				printf("id=%d\tplayers_count=%d\tstarted=%s\n",
-					game_list . game_id[i],
-					game_list . players_count[i],
-					game_list . started ? "aktywna" : "nieaktywna"
-				);
-			}
-*/
+
 			struct game_msg game_list_msg;
 			game_list_msg.msg_type = GAME_LIST;
 			game_list_msg.message.game_list = game_list;

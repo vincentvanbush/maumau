@@ -113,6 +113,7 @@ struct game_msg {
 	short msg_type;
 	int token;
 	int game_token;
+	int game_id;
 	union msg {
 		struct join_game_msg		join_game;
 		struct ready_msg			ready;

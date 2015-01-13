@@ -20,6 +20,11 @@ int main(int argc, char* argv[]) {
 	struct game_msg msg_buffer;
 	scanf("%hu", &msg_buffer.msg_type);
 
+	if (msg_buffer.msg_type == 0) {
+		strcpy(msg_buffer.message.join_game.player_name, "Ziutek");
+		msg_buffer.message.join_game.game_id = 123;
+	}
+
 	// Create client address info
 	struct sockaddr_in cl_addr = local_address(client_port);
 

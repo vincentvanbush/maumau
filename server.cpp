@@ -8,14 +8,22 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <map>
+#include <string>
 
 #include "utils.h"
 #include "messages.h"
+#include "games.h"
 
 ushort service_port = 1234;
 pthread_t main_thread;
 
 void *main_loop(void *arg) {
+	std::map <int, struct game_info*> games;
+	std::map <std::string, struct player_info*> players;
+
+
+
 	struct game_msg msg_buffer;
 
 	struct sockaddr_in srv_addr, cl_addr;
@@ -34,20 +42,39 @@ void *main_loop(void *arg) {
 		int msg_type = msg_buffer.msg_type;
 		printf("(%d) ", msg_type);
 		switch (msg_type) {
-		case JOIN_GAME:
-			printf("Received join game message, nick: %s\n", msg_buffer.message.join_game.player_name);
+		case JOIN_GAME: {
+			printf("Received join game message from %s\n", msg_buffer.message.join_game.player_name);
+			struct join_game_msg msg = msg_buffer.message.join_game;
+			
+			if (games[msg.game_id] == nullptr) {
+				// Game does not exist yet, we have to create it
+				printf("--- Game %d does not exist yet\n", msg.game_id);
+				games[msg.game_id] = new_game(msg.game_id);
+			}
+			else {
+				// Game exists. Let the player join or send him an error.
+				printf("--- %s wants to join game %d\n", msg.player_name, msg.game_id);
+			}
+
+			new_game (1);
+			}
 			break;
-		case MOVE:
+		
+		case MOVE: {
 			printf("Received move message\n");
+			}
 			break;
-		case LEAVE_GAME:
+		case LEAVE_GAME: {
 			printf("Received leave game message\n");
+			}
 			break;
-		case READY:
+		case READY: {
 			printf("Received ready message\n");
+			}
 			break;
-		default:
+		default: {
 			printf("Unrecognized message type %d\n", msg_type);
+			}
 		}
 	}
 
@@ -55,6 +82,9 @@ void *main_loop(void *arg) {
 } 	
 
 int main(int argc, char* argv[]) {
+
+	srand (time(NULL));
+
 	if (pthread_create (&main_thread, NULL, main_loop, NULL) != 0) {
 		printf ("Thread create error");
     	exit (EXIT_FAILURE);

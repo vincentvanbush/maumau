@@ -5,12 +5,12 @@
 #include <cstdio>
 #include <cstring>
 
-struct game_info new_game(int id) {
-	struct game_info ret;
+struct game_info* new_game(int id) {
+	struct game_info* ret = new struct game_info;
 
-	ret.game_token = rand();
-	ret.game_id = id;
-	ret.turn = 0;
+	ret->game_token = rand();
+	ret->game_id = id;
+	ret->turn = 0;
 
 	// shuffle the deck
 	struct card card_array[52] = { 
@@ -33,8 +33,8 @@ struct game_info new_game(int id) {
 	std::random_device rd;
     std::mt19937 g (rd());
     std::shuffle (cards.begin(), cards.end(), g);
-    ret.deck = cards;
-    ret.started = false;
+    ret->deck = cards;
+    ret->started = false;
 
 	return ret;
 }

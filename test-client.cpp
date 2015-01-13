@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
 	printf("Enter message type: ");
 	scanf("%hu", &msg_buffer.msg_type);
 
-	if (msg_buffer.msg_type == 0) {
+	if (msg_buffer.msg_type == JOIN_GAME) {
 		printf("Enter player name ");
 		scanf("%s", &msg_buffer.message.join_game.player_name);
 		printf("Enter game id ");
@@ -47,6 +47,16 @@ int main(int argc, char* argv[]) {
 		exit (EXIT_FAILURE);
 	}
 	else printf("Sent %d bytes\n", sent);
+
+	socklen_t fromlen = sizeof srv_addr;
+	if (recvfrom (cl_socket, &msg_buffer, sizeof msg_buffer, 0, (struct sockaddr*) &srv_addr, &fromlen) < 0) {
+		perror ("Error receiving data on socket");
+		exit (EXIT_FAILURE);
+	}
+	else {
+		printf("Received message from server, type: %d\n", msg_buffer.msg_type);
+	}
+
 
 	// Close socket
 	close_socket(cl_socket);

@@ -4,6 +4,7 @@
 #include <random>
 #include <cstdio>
 #include <cstring>
+#include <deque>
 
 struct game_info* new_game(int id) {
 	struct game_info* ret = new struct game_info;
@@ -55,5 +56,23 @@ short player_join_game (struct player_info* player, struct game_info* game) {
 }
 
 void deal_cards (struct game_info* game) {
+	std::vector <struct player_info*> players = game -> players;
+	std::deque <struct card>* deck = &game -> deck;
 
+	for (int i = 0; i < 5; i++) {
+		for (int j = 0; j < game -> players.size(); j++) {
+			struct player_info* player = game -> players[j];
+			struct card dealt_card = deck -> front();
+			deck -> pop_front();
+			player -> cards.push_back (dealt_card);
+		}
+	}
+
+	struct card top_card = deck -> front();
+	deck -> pop_front();
+	game -> played_cards.push_back (top_card);
+}
+
+struct card top_card (struct game_info* game) {
+	return game -> deck.front();
 }

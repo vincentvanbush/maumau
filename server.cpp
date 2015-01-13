@@ -51,8 +51,18 @@ void *main_loop(void *arg) {
 			if (games[msg.game_id] == nullptr) {
 				// Game does not exist yet, we have to create it
 				printf("--- Game %d does not exist yet\n", msg.game_id);
-				if (games_num > MAX_GAME_NUM - 1) {
-					printf("--- Can't create game - server is full\n");
+				if (games_num > MAX_GAME_NUM - 1 || msg.game_id > 49) {
+					printf("--- Server is full\n");
+					struct game_msg error_msg;
+					error_msg.msg_type = CANNOT_JOIN;
+					socklen_t tolen = sizeof cl_addr;
+					if (sendto (srv_socket, &error_msg, sizeof error_msg, 0, (struct sockaddr*) &cl_addr, tolen) < 0) {
+						perror ("Error sending CANNOT_JOIN to client socket");
+						exit (EXIT_FAILURE);
+					}
+					else {
+						printf("Sent CANNOT_JOIN to client\n");
+					}
 					break;
 				}
 				game = new_game(msg.game_id);
@@ -86,6 +96,7 @@ void *main_loop(void *arg) {
 			join_ok_msg.msg_type = JOIN_OK;
 			join_ok_msg.message.join_ok.player_token = player -> token;
 			join_ok_msg.message.join_ok.game_token = game -> game_token;
+			join_ok_msg.message.join_ok.slot_number = game -> players.size() - 1;
 			puts("--- Join OK");
 			socklen_t tolen = sizeof cl_addr;
 			if (sendto (srv_socket, &join_ok_msg, sizeof join_ok_msg, 0, (struct sockaddr*) &cl_addr, tolen) < 0) {
@@ -145,7 +156,32 @@ void *main_loop(void *arg) {
 						++ready_players;
 				if (ready_players == game -> players.size()) {
 					// all players are ready, so deal the cards and start the game
-					printf("START GAME!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+					deal_cards (game);
+
+					// send 'Start game' to all players in game
+					for (int i = 0; i < game -> players.size(); i++) {
+						struct sockaddr_in player_addr = game -> players[i] -> net_addr;
+						printf("Player addr: %s:%d\n", inet_ntoa(player_addr.sin_addr), ntohs(player_addr.sin_port));
+						struct player_info* player = game -> players[i];
+
+						struct game_msg start_game_msg;
+						start_game_msg.msg_type = START_GAME;
+
+						struct start_game_msg* start_game = &start_game_msg.message.start_game;
+						for (int j = 0; j < player -> cards.size(); j++)
+							start_game -> player_cards[j] = player -> cards[j];
+						start_game -> first_card_in_stack = game -> deck.front();
+						
+						start_game -> turn = 0;
+
+						socklen_t tolen = sizeof player_addr;
+						if (sendto (srv_socket, &start_game_msg, sizeof start_game_msg, 0, (struct sockaddr*) &player_addr, tolen) < 0) {
+							perror ("Error sending START_GAME to client socket");
+							exit (EXIT_FAILURE);
+						}
+						else printf ("Start game message sent to %s\n", game -> players[i] -> player_name);
+					}
+					
 				}
 			}
 			
@@ -180,9 +216,7 @@ void *main_loop(void *arg) {
 				perror ("Error sending GAME_LIST to client socket");
 				exit (EXIT_FAILURE);
 			}
-			else {
-				printf("Sent GAME_LIST to client\n");
-			}
+			else printf("Sent GAME_LIST to client\n");
 		}
 		break;
 

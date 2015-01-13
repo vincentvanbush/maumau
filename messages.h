@@ -80,10 +80,12 @@ struct player_joined_msg {
 
 struct start_game_msg {
 	struct card player_cards[52];
-	card first_card_in_stack;
+	struct card first_card_in_stack;
+	short turn;
 };
 
 struct next_turn_msg {
+	short turn;
 	char player_name[30];
 	short cards_picked_up;
 	struct card cards[30];

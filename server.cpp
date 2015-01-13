@@ -145,7 +145,18 @@ void *main_loop(void *arg) {
 						++ready_players;
 				if (ready_players == game -> players.size()) {
 					// all players are ready, so deal the cards and start the game
-					printf("START GAME!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+					deal_cards (game);
+
+					// test
+					for (int i = 0; i < game -> players.size(); i++) {
+						struct player_info* player = game -> players[i];
+						printf("Player %s's cards:\n", player -> player_name);
+						std::vector <struct card> cards = player -> cards;
+						for (int j = 0; j < cards.size(); j++) {
+							printf("\t%d %d\n", cards[j].value, cards[j].color);
+						}
+					}
+
 				}
 			}
 			

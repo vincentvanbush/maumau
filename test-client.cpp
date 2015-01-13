@@ -12,6 +12,8 @@
 #include "utils.h"
 #include "messages.h"
 
+const int MAX_GAME_NUM = 50;
+
 ushort client_port = 0;
 ushort server_port = 1234;
 
@@ -27,6 +29,7 @@ int main(int argc, char* argv[]) {
 		printf("Enter game id ");
 		scanf("%d", &msg_buffer.message.join_game.game_id);
 	}
+	
 
 	// Create client address info
 	struct sockaddr_in cl_addr = local_address(client_port);
@@ -55,6 +58,26 @@ int main(int argc, char* argv[]) {
 	}
 	else {
 		printf("Received message from server, type: %d\n", msg_buffer.msg_type);
+	}
+
+	if (msg_buffer.msg_type == GAME_LIST) {
+		printf("Game list...\n");
+		struct game_list_msg game_list = msg_buffer.message.game_list;
+		for (int i = 0; i < MAX_GAME_NUM; i++) {
+			if (game_list . game_exists[i]) {
+				printf("id=%d\tplayers_count=%d\tstarted=%s ",
+					game_list . game_id[i],
+					game_list . players_count[i],
+					game_list . started[i] ? "aktywna" : "nieaktywna"
+				);
+				if (game_list.game_exists[i]) {
+					for (int j = 0; j < game_list.players_count[i]; j++) {
+						printf("%s ", game_list.player_nick[i][j]);
+					}
+					printf("\n");
+				}
+			}
+		}
 	}
 
 

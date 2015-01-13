@@ -102,7 +102,9 @@ struct player_left_msg {
 };
 
 struct game_list_msg {
+	bool game_exists[50];
 	int game_id[50];
+	short players_count[50];
 	char player_nick[30][4][50];
 	bool started[50];
 };

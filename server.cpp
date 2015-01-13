@@ -115,16 +115,32 @@ void *main_loop(void *arg) {
 			printf("Received request game list message\n");
 
 			struct game_list_msg game_list;
-			for (int i = 0; i < MAX_GAME_NUM && games[i] != nullptr; i++) {
-				game_list.game_id[i] = games[i] -> game_id;
-				for (int j = 0; j < games[i] -> players.size(); j++) {
-					strcpy (game_list.player_nick[i][j], games[i] -> players[j] -> player_name);
+			for (int i = 0; i < MAX_GAME_NUM; i++) { 
+				if (games[i] == nullptr) {
+					game_list.game_exists[i] = false;
 				}
-				game_list.started[i] = games[i] -> started;
+				else {
+					game_list.game_exists[i] = true;
+					game_list.game_id[i] = games[i] -> game_id;
+					game_list.players_count[i] = games[i] -> players.size();
+					for (int j = 0; j < games[i] -> players.size(); j++) {
+						strcpy (game_list.player_nick[i][j], games[i] -> players[j] -> player_name);
+					}
+					game_list.started[i] = games[i] -> started;
+				}
 			}
-
+/*
+			for (int i = 0; i < MAX_GAME_NUM; i++) {
+				printf("id=%d\tplayers_count=%d\tstarted=%s\n",
+					game_list . game_id[i],
+					game_list . players_count[i],
+					game_list . started ? "aktywna" : "nieaktywna"
+				);
+			}
+*/
 			struct game_msg game_list_msg;
 			game_list_msg.msg_type = GAME_LIST;
+			game_list_msg.message.game_list = game_list;
 			socklen_t tolen = sizeof cl_addr;
 			if (sendto (srv_socket, &game_list_msg, sizeof game_list_msg, 0, (struct sockaddr*) &cl_addr, tolen) < 0) {
 				perror ("Error sending GAME_LIST to client socket");

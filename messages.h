@@ -13,6 +13,8 @@ const short INVALID_MOVE = 8;
 const short GAME_END = 9;
 const short PLAYER_LEFT = 10;
 const short MOVE = 11;
+const short GAME_LIST = 12;
+const short REQUEST_GAME_LIST = 13;
 
 const short KING = 20;
 const short QUEEN = 21;
@@ -52,6 +54,10 @@ struct ready_msg {
 };
 
 struct leave_game_msg {
+	short dummy;
+};
+
+struct request_game_list_msg {
 	short dummy;
 };
 
@@ -95,6 +101,12 @@ struct player_left_msg {
 	char player_name[30];
 };
 
+struct game_list_msg {
+	int game_id[50];
+	char player_nick[30][50];
+	bool started[50];
+};
+
 struct game_msg {
 	short msg_type;
 	int token;
@@ -112,6 +124,8 @@ struct game_msg {
 		struct game_end_msg			game_end;
 		struct player_left_msg		player_left;
 		struct move_msg 			move;
+		struct game_list_msg		game_list;
+		struct request_game_list_msg request_game_list;
 	} message;
 };
 

@@ -29,7 +29,7 @@ struct game_info* new_game (int);
 
 struct player_info* new_player (char*);
 
-void player_join_game (struct player_info*, struct game_info*);
+short player_join_game (struct player_info*, struct game_info*);
 
 void deal_cards (struct game_info*);
 

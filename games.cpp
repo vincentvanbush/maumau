@@ -49,8 +49,9 @@ struct player_info* new_player (char* player_name) {
 	return ret;
 }
 
-void player_join_game (struct player_info* player, struct game_info* game) {
+short player_join_game (struct player_info* player, struct game_info* game) {
 	game->players.push_back(player);
+	return (short) game->players.size() - 1;
 }
 
 void deal_cards (struct game_info* game) {

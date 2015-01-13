@@ -15,12 +15,13 @@
 #include "messages.h"
 #include "games.h"
 
+const int MAX_GAME_NUM = 50;
+
 ushort service_port = 1234;
 pthread_t main_thread;
 
 void *main_loop(void *arg) {
 	std::map <int, struct game_info*> games;
-	std::map <std::string, struct player_info*> players;
 
 	int games_num = 0;
 
@@ -50,7 +51,7 @@ void *main_loop(void *arg) {
 			if (games[msg.game_id] == nullptr) {
 				// Game does not exist yet, we have to create it
 				printf("--- Game %d does not exist yet\n", msg.game_id);
-				if (games_num > 49) {
+				if (games_num > MAX_GAME_NUM - 1) {
 					printf("--- Can't create game - server is full\n");
 					break;
 				}
@@ -82,6 +83,8 @@ void *main_loop(void *arg) {
 
 			struct game_msg join_ok_msg;
 			join_ok_msg.msg_type = JOIN_OK;
+			join_ok_msg.message.join_ok.player_token = player -> token;
+			join_ok_msg.message.join_ok.game_token = game -> game_token;
 			puts("--- Join OK");
 			socklen_t tolen = sizeof cl_addr;
 			if (sendto (srv_socket, &join_ok_msg, sizeof join_ok_msg, 0, (struct sockaddr*) &cl_addr, tolen) < 0) {
@@ -105,6 +108,31 @@ void *main_loop(void *arg) {
 
 		case READY: {
 			printf("Received ready message\n");
+		}
+		break;
+
+		case REQUEST_GAME_LIST: {
+			printf("Received request game list message\n");
+
+			struct game_list_msg game_list;
+			for (int i = 0; i < MAX_GAME_NUM && games[i] != nullptr; i++) {
+				game_list.game_id[i] = games[i] -> game_id;
+				for (int j = 0; j < games[i] -> players.size(); j++) {
+					strcpy (game_list.player_nick[i][j], games[i] -> players[j] -> player_name);
+				}
+				game_list.started[i] = games[i] -> started;
+			}
+
+			struct game_msg game_list_msg;
+			game_list_msg.msg_type = GAME_LIST;
+			socklen_t tolen = sizeof cl_addr;
+			if (sendto (srv_socket, &game_list_msg, sizeof game_list_msg, 0, (struct sockaddr*) &cl_addr, tolen) < 0) {
+				perror ("Error sending GAME_LIST to client socket");
+				exit (EXIT_FAILURE);
+			}
+			else {
+				printf("Sent GAME_LIST to client\n");
+			}
 		}
 		break;
 

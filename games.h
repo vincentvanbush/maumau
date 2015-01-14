@@ -11,7 +11,7 @@ struct player_info {
 	char player_name[30];
 	bool ready;
 	std::vector<struct card> cards;
-	struct sockaddr_in net_addr;
+	int socket;
 };
 
 struct game_info {

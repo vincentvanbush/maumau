@@ -12,7 +12,7 @@
 int create_socket() {
 	// Initialize UDP socket
 	int socket_fd;
-	if ((socket_fd = socket (PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+	if ((socket_fd = socket (PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
 		perror ("Cannot open main socket");
 		exit (EXIT_FAILURE);
 	}

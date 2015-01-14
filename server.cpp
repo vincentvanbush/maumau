@@ -15,31 +15,31 @@
 #include "messages.h"
 #include "games.h"
 
+struct client_thread_arg {
+	int rcv_sck;
+	struct game_info** games;
+};
+
 const int MAX_GAME_NUM = 50;
 
 ushort service_port = 1234;
 pthread_t main_thread;
 
-void *main_loop(void *arg) {
-	std::map <int, struct game_info*> games;
+int games_num = 0;
 
-	int games_num = 0;
+void *client_loop(void *arg) {
+	int rcv_sck = ((struct client_thread_arg*) arg) -> rcv_sck;
+	// std::map <int, struct game_info*> &games = *(((struct client_thread_arg*) arg) -> games);
+	struct game_info** games = ((struct client_thread_arg*) arg) -> games;
 
+	printf ("Hello, this is the client thread (%d)\n", rcv_sck);
 	struct game_msg msg_buffer;
+	struct sockaddr_in cl_addr;
+	socklen_t fromlen = sizeof cl_addr;
 
-	struct sockaddr_in srv_addr, cl_addr;
 
-	srv_addr = local_address(service_port);
-	int srv_socket = create_socket();
-	bind_socket(srv_socket, srv_addr);
-
-	// Message loop
-	while (true) {
-		socklen_t fromlen = sizeof cl_addr;
-		if (recvfrom (srv_socket, &msg_buffer, sizeof msg_buffer, 0, (struct sockaddr*) &cl_addr, &fromlen) < 0) {
-			perror ("Error receiving data on socket");
-			exit (EXIT_FAILURE);
-		}
+	while (recvfrom (rcv_sck, &msg_buffer, sizeof msg_buffer, 0, (struct sockaddr*) &cl_addr, &fromlen) > 0) {
+		//if (recvfrom (srv_socket, &msg_buffer, sizeof msg_buffer, 0, (struct sockaddr*) &cl_addr, &fromlen) < 0)
 		int msg_type = msg_buffer.msg_type;
 		printf("(%d) ", msg_type);
 		switch (msg_type) {
@@ -48,6 +48,8 @@ void *main_loop(void *arg) {
 			printf("Received join game message from %s\n", msg_buffer.message.join_game.player_name);
 			struct join_game_msg msg = msg_buffer.message.join_game;
 			struct game_info* game;
+
+			game = games[msg.game_id];
 			if (games[msg.game_id] == nullptr) {
 				// Game does not exist yet, we have to create it
 				printf("--- Game %d does not exist yet\n", msg.game_id);
@@ -56,7 +58,7 @@ void *main_loop(void *arg) {
 					struct game_msg error_msg;
 					error_msg.msg_type = CANNOT_JOIN;
 					socklen_t tolen = sizeof cl_addr;
-					if (sendto (srv_socket, &error_msg, sizeof error_msg, 0, (struct sockaddr*) &cl_addr, tolen) < 0) {
+					if (send (rcv_sck, &error_msg, sizeof error_msg, 0) < 0) {
 						perror ("Error sending CANNOT_JOIN to client socket");
 						exit (EXIT_FAILURE);
 					}
@@ -66,18 +68,20 @@ void *main_loop(void *arg) {
 					break;
 				}
 				game = new_game(msg.game_id);
+				printf("Game id %d has generated token %d\n", game -> game_id, game -> game_token);
 				games[msg.game_id] = game;
 				games_num++;
 			}
 			else {
 				// Game exists. Let the player join or send him an error.
 				printf("--- %s wants to join game %d\n", msg.player_name, msg.game_id);
+				printf("Game id %d has token %d\n", game -> game_id, game -> game_token);
 				if (game -> started || game -> players.size() >= 4) {
 					puts("--- Cannot join this game");
 					struct game_msg error_msg;
 					error_msg.msg_type = CANNOT_JOIN;
 					socklen_t tolen = sizeof cl_addr;
-					if (sendto (srv_socket, &error_msg, sizeof error_msg, 0, (struct sockaddr*) &cl_addr, tolen) < 0) {
+					if (send (rcv_sck, &error_msg, sizeof error_msg, 0) < 0) {
 						perror ("Error sending CANNOT_JOIN to client socket");
 						exit (EXIT_FAILURE);
 					}
@@ -86,11 +90,12 @@ void *main_loop(void *arg) {
 					}
 					break;
 				}
-			}
-			game = games[msg.game_id];
+			}			
+			
 			struct player_info* player = new_player (msg.player_name);
 			player_join_game (player, game);
-			player -> net_addr = cl_addr;
+			player -> socket = rcv_sck;
+			printf ("%s has socket descriptor %d\n", player -> player_name, rcv_sck);
 
 			struct game_msg join_ok_msg;
 			join_ok_msg.msg_type = JOIN_OK;
@@ -99,7 +104,7 @@ void *main_loop(void *arg) {
 			join_ok_msg.message.join_ok.slot_number = game -> players.size() - 1;
 			puts("--- Join OK");
 			socklen_t tolen = sizeof cl_addr;
-			if (sendto (srv_socket, &join_ok_msg, sizeof join_ok_msg, 0, (struct sockaddr*) &cl_addr, tolen) < 0) {
+			if (send (rcv_sck, &join_ok_msg, sizeof join_ok_msg, 0) < 0) {
 				perror ("Error sending JOIN_OK to client socket");
 				exit (EXIT_FAILURE);
 			}
@@ -119,15 +124,21 @@ void *main_loop(void *arg) {
 		break;
 
 		case READY: {
+
 			printf("Received ready message\n");
+			printf ("Game id = %hu\n", msg_buffer.game_id);
+
 			int player_token = msg_buffer.token;
 			int game_token = msg_buffer.game_token;
+			printf("User sent game token %d\n", game_token);
 			struct ready_msg ready_msg = msg_buffer.message.ready;
 
 			struct game_info* game = games[msg_buffer.game_id];
 
 			// if received game token is different to the actual one, send error
 			if (game -> game_token != game_token) {
+				printf ("ACTUAL GAME TOKEN = %d\n", game -> game_token);
+				printf("BREAK 1\n");
 				// TODO: send error message to client
 				break;	
 			}
@@ -139,30 +150,32 @@ void *main_loop(void *arg) {
 				if (game -> players[i] -> token == player_token) {
 					invalid_player_token = false;
 					player_index = i;
-					break;
 				}
 			}
 			if (invalid_player_token) {
+				printf("BREAK 2\n");
 				// TODO: send error message to client
 				break;
 			}
 
 			game -> players[player_index] -> ready = true;
 
+			printf("Game %d has %d players, ", game -> game_id, game -> players.size());
 			if (game -> players.size() >= 2) {
 				short ready_players = 0;
 				for (int i = 0; i < game -> players.size(); i++)
 					if (game -> players[i] -> ready)
 						++ready_players;
+				printf ("%d of whom ready\n", ready_players);
 				if (ready_players == game -> players.size()) {
 					// all players are ready, so deal the cards and start the game
 					deal_cards (game);
 
 					// send 'Start game' to all players in game
 					for (int i = 0; i < game -> players.size(); i++) {
-						struct sockaddr_in player_addr = game -> players[i] -> net_addr;
-						printf("Player addr: %s:%d\n", inet_ntoa(player_addr.sin_addr), ntohs(player_addr.sin_port));
+						int player_sck = game -> players[i] -> socket;
 						struct player_info* player = game -> players[i];
+						printf ("%s has socket descriptor %d\n", player -> player_name, player_sck);
 
 						struct game_msg start_game_msg;
 						start_game_msg.msg_type = START_GAME;
@@ -174,8 +187,10 @@ void *main_loop(void *arg) {
 						
 						start_game -> turn = 0;
 
-						socklen_t tolen = sizeof player_addr;
-						if (sendto (srv_socket, &start_game_msg, sizeof start_game_msg, 0, (struct sockaddr*) &player_addr, tolen) < 0) {
+						
+
+						// BROKEN
+						if (send (player_sck, &start_game_msg, sizeof start_game_msg, 0) < 0) {
 							perror ("Error sending START_GAME to client socket");
 							exit (EXIT_FAILURE);
 						}
@@ -212,7 +227,7 @@ void *main_loop(void *arg) {
 			game_list_msg.msg_type = GAME_LIST;
 			game_list_msg.message.game_list = game_list;
 			socklen_t tolen = sizeof cl_addr;
-			if (sendto (srv_socket, &game_list_msg, sizeof game_list_msg, 0, (struct sockaddr*) &cl_addr, tolen) < 0) {
+			if (send (rcv_sck, &game_list_msg, sizeof game_list_msg, 0) < 0) {
 				perror ("Error sending GAME_LIST to client socket");
 				exit (EXIT_FAILURE);
 			}
@@ -225,6 +240,44 @@ void *main_loop(void *arg) {
 		}
 
 		}
+	}
+}
+
+void *main_loop(void *arg) {
+	
+	struct game_info** games_array = new struct game_info*[50];
+	for (int i = 0; i < 50; i++) {
+		games_array[i] = nullptr;
+	}
+	struct sockaddr_in srv_addr, cl_addr;
+
+	srv_addr = local_address(service_port);
+	int srv_socket = create_socket();
+	bind_socket(srv_socket, srv_addr);
+
+	if (listen (srv_socket, 200) == -1) {
+		perror ("Cannot listen to main socket");
+		exit (EXIT_FAILURE);
+	}
+
+	// Message loop
+	while (true) {
+		socklen_t fromlen = sizeof cl_addr;
+		int rcv_sck;
+		if ((rcv_sck = accept (srv_socket, (struct sockaddr*) &cl_addr, &fromlen)) == -1) {
+			perror ("Main socket accept error \n");
+			continue;
+		}
+
+		pthread_t client_thread;
+		struct client_thread_arg* arg = new struct client_thread_arg; // { rcv_sck, &games_array };
+		arg -> rcv_sck = rcv_sck;
+		arg -> games = games_array;
+		if (pthread_create (&client_thread, NULL, client_loop, arg)) {
+			perror ("Error creating client thread");
+			exit (EXIT_FAILURE);
+		}
+
 	}
 
 	close_socket(srv_socket);

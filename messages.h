@@ -15,6 +15,8 @@ const short PLAYER_LEFT = 10;
 const short MOVE = 11;
 const short GAME_LIST = 12;
 const short REQUEST_GAME_LIST = 13;
+const short CANNOT_READY = 14;
+const short CANNOT_LEAVE = 15;
 
 const short KING = 20;
 const short QUEEN = 21;
@@ -68,6 +70,14 @@ struct request_game_list_msg {
 // Sent by server
 
 struct cannot_join_msg {
+	short dummy;
+};
+
+struct cannot_ready_msg {
+	short dummy;
+};
+
+struct cannot_leave_msg {
 	short dummy;
 };
 
@@ -125,6 +135,8 @@ struct game_msg {
 		struct ready_msg			ready;
 		struct leave_game_msg		leave_game;
 		struct cannot_join_msg		cannot_join;
+		struct cannot_ready_msg		cannot_ready;
+		struct cannot_leave_msg		cannot_leave;
 		struct join_ok_msg			join_ok;
 		struct player_joined_msg	player_joined;
 		struct start_game_msg		start_game;

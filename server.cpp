@@ -127,16 +127,29 @@ void *client_loop(void *arg) {
 			int game_id = msg_buffer.game_id;
 			struct move_msg move = msg_buffer.message.move;
 
-			struct game_info* game = games[game_id];
+			struct game_info* game;
+			bool valid_move;
 
-			bool valid_move = validate_move (&move, game);
+			if (game_id < 0 || game_id > 49 || games[game_id] == nullptr
+				|| games[game_id] -> game_token != game_token) { // invalid game id/token
+				printf("Invalid game id/token\n");
+				valid_move = false;
+			}
+			else {
+				game = games[game_id];
+				if (game -> players[game -> turn] -> token != player_token) { // wrong turn
+					printf("Wrong turn\n");
+					valid_move = false;
+				}
+				else valid_move = validate_move (&move, game);
+			}
 
 			if (valid_move) {
 				// Update game state
-				(++game -> turn) %= game -> players.size();
-
+				
 				std::deque <struct card> cards_picked_up = update_game_state (&move, game);
-
+				
+				(++game -> turn) %= game -> players.size();
 
 				// Broadcast move to others
 				for (int i = 0; i < game -> players.size() && game -> players[i] -> socket != rcv_sck; i++) {
@@ -178,6 +191,25 @@ void *client_loop(void *arg) {
 
 		case LEAVE_GAME: {
 			printf("Received leave game message\n");
+			int player_token = msg_buffer.token;
+			int game_token = msg_buffer.game_token;
+			int game_id = msg_buffer.game_id;
+			
+			bool invalid_game = true;
+
+			if (invalid_game) {
+				struct game_msg cannot_leave_msg;
+				cannot_leave_msg.msg_type = CANNOT_LEAVE;
+				if (send (rcv_sck, &cannot_leave_msg, sizeof cannot_leave_msg, 0) < 0) {
+					perror ("Error sending CANNOT_LEAVE to client socket");
+					exit (EXIT_FAILURE);
+				}
+				else printf ("Cannot leave message sent\n");
+			}
+			else {
+
+			}
+
 		}
 		break;
 
@@ -189,26 +221,40 @@ void *client_loop(void *arg) {
 			int player_token = msg_buffer.token;
 			int game_token = msg_buffer.game_token;
 			struct ready_msg ready_msg = msg_buffer.message.ready;
-
-			struct game_info* game = games[msg_buffer.game_id];
-
-			// if received game token is different to the actual one, send error
-			if (game -> game_token != game_token) {
-				// TODO: send error message to client
-				break;	
-			}
-
-			// check if received player token is valid
-			bool invalid_player_token = true;
+			bool invalid_player_token;
+			struct game_info* game;
 			short player_index = -1;
-			for (int i = 0; i < game -> players.size(); i++) {
-				if (game -> players[i] -> token == player_token) {
-					invalid_player_token = false;
-					player_index = i;
+
+			if (msg_buffer.game_id < 0 || msg_buffer.game_id > 49) {
+				invalid_player_token = true;
+			}
+			else {
+				game = games[msg_buffer.game_id];
+				// check if received player token is valid
+				bool invalid_player_token = true;
+				
+				if (game == nullptr || game -> game_token != game_token) {
+					// if received game token is different to the actual one, send error
+					invalid_player_token = true;
+				}
+				else for (int i = 0; i < game -> players.size(); i++) {
+					if (game -> players[i] -> token == player_token) {
+						invalid_player_token = false;
+						player_index = i;
+					}
 				}
 			}
+
 			if (invalid_player_token) {
-				// TODO: send error message to client
+				// send error message to client
+				struct game_msg cannot_ready_msg;
+				cannot_ready_msg.msg_type = CANNOT_READY;
+				if (send (rcv_sck, &cannot_ready_msg, sizeof cannot_ready_msg, 0) < 0) {
+					perror ("Error sending CANNOT_READY to client socket");
+					exit (EXIT_FAILURE);
+				}
+				else printf ("Cannot ready message sent\n");
+					
 				break;
 			}
 
@@ -305,6 +351,10 @@ void *main_loop(void *arg) {
 
 	srv_addr = local_address(service_port);
 	int srv_socket = create_socket();
+
+	int optval = 1;
+	setsockopt (srv_socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
+
 	bind_socket(srv_socket, srv_addr);
 
 	if (listen (srv_socket, 200) == -1) {

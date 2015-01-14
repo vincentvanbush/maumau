@@ -35,10 +35,9 @@ void *client_loop(void *arg) {
 	printf ("Hello, this is the client thread (%d)\n", rcv_sck);
 	struct game_msg msg_buffer;
 	struct sockaddr_in cl_addr;
-	socklen_t fromlen = sizeof cl_addr;
 
 
-	while (recvfrom (rcv_sck, &msg_buffer, sizeof msg_buffer, 0, (struct sockaddr*) &cl_addr, &fromlen) > 0) {
+	while (recv (rcv_sck, &msg_buffer, sizeof msg_buffer, 0) > 0) {
 		//if (recvfrom (srv_socket, &msg_buffer, sizeof msg_buffer, 0, (struct sockaddr*) &cl_addr, &fromlen) < 0)
 		int msg_type = msg_buffer.msg_type;
 		printf("(%d) ", msg_type);
@@ -56,7 +55,6 @@ void *client_loop(void *arg) {
 				if (games_num > MAX_GAME_NUM - 1 || msg.game_id > 49) {
 					struct game_msg error_msg;
 					error_msg.msg_type = CANNOT_JOIN;
-					socklen_t tolen = sizeof cl_addr;
 					if (send (rcv_sck, &error_msg, sizeof error_msg, 0) < 0) {
 						perror ("Error sending CANNOT_JOIN to client socket");
 						exit (EXIT_FAILURE);
@@ -78,7 +76,6 @@ void *client_loop(void *arg) {
 					puts("--- Cannot join this game");
 					struct game_msg error_msg;
 					error_msg.msg_type = CANNOT_JOIN;
-					socklen_t tolen = sizeof cl_addr;
 					if (send (rcv_sck, &error_msg, sizeof error_msg, 0) < 0) {
 						perror ("Error sending CANNOT_JOIN to client socket");
 						exit (EXIT_FAILURE);
@@ -94,13 +91,25 @@ void *client_loop(void *arg) {
 			player_join_game (player, game);
 			player -> socket = rcv_sck;
 
+			struct game_msg player_joined_msg;
+			player_joined_msg.msg_type = PLAYER_JOINED;
+			strcpy(player_joined_msg.message.player_joined.player_name, msg.player_name);
+			player_joined_msg.message.player_joined.slot_number = game -> players.size() - 1;
+			for (int i = 0; i < game -> players.size() && game -> players[i] -> socket != rcv_sck; i++) {
+				if (send (game -> players[i] -> socket, &player_joined_msg, sizeof player_joined_msg, 0) < 0) {
+					perror ("Error sending PLAYER_JOINED to client socket");
+					exit (EXIT_FAILURE);
+				}
+				else printf("Sent PLAYER_JOINED to client %s\n", game -> players[i] -> player_name);
+			}
+
+
 			struct game_msg join_ok_msg;
 			join_ok_msg.msg_type = JOIN_OK;
 			join_ok_msg.message.join_ok.player_token = player -> token;
 			join_ok_msg.message.join_ok.game_token = game -> game_token;
 			join_ok_msg.message.join_ok.slot_number = game -> players.size() - 1;
 			puts("--- Join OK");
-			socklen_t tolen = sizeof cl_addr;
 			if (send (rcv_sck, &join_ok_msg, sizeof join_ok_msg, 0) < 0) {
 				perror ("Error sending JOIN_OK to client socket");
 				exit (EXIT_FAILURE);
@@ -216,7 +225,6 @@ void *client_loop(void *arg) {
 			struct game_msg game_list_msg;
 			game_list_msg.msg_type = GAME_LIST;
 			game_list_msg.message.game_list = game_list;
-			socklen_t tolen = sizeof cl_addr;
 			if (send (rcv_sck, &game_list_msg, sizeof game_list_msg, 0) < 0) {
 				perror ("Error sending GAME_LIST to client socket");
 				exit (EXIT_FAILURE);

@@ -11,7 +11,7 @@ struct player_info {
 	char player_name[30];
 	bool ready;
 	std::vector<struct card> cards;
-	struct sockaddr_in net_addr;
+	int socket;
 };
 
 struct game_info {
@@ -34,5 +34,7 @@ struct player_info* new_player (char*);
 short player_join_game (struct player_info*, struct game_info*);
 
 void deal_cards (struct game_info*);
+
+bool validate_move (struct move_msg*, struct game_info*);
 
 #endif

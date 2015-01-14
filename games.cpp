@@ -76,3 +76,8 @@ void deal_cards (struct game_info* game) {
 struct card top_card (struct game_info* game) {
 	return game -> deck.front();
 }
+
+bool validate_move (struct move_msg* move, struct game_info* game) {
+	// One hell of a TODO :)
+	return false;
+}

@@ -20,3 +20,5 @@ HEADERS  += mainwindow.h \
     tcpclient.h
 
 FORMS    += mainwindow.ui
+
+CONFIG += c++11

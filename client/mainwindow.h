@@ -30,6 +30,7 @@ public slots:
     void onCannotJoinMessageRecv();
     void onInvalidMoveMessageRecv();
     void onStartGameMessageRecv();
+    void onPlayerJoinedMessageRecv();
 
 
 

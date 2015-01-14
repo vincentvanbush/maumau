@@ -6,6 +6,10 @@ TcpClient::TcpClient()
     this->serverIPAddress = "127.0.0.1";
     this->serverPort = 1234;
 
+    for(int i=0; i<4; i++) {
+        this->playersAtSlots[i] = nullptr;
+    }
+
     this->tcpSocket = new QTcpSocket(this);
     connect(tcpSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(socketError(QAbstractSocket::SocketError)));
     connect(tcpSocket, SIGNAL(connected()), this, SLOT(socketConnected()));
@@ -37,6 +41,8 @@ void TcpClient::readMessage()
         this->joinOKSignal();
         break;
     case PLAYER_JOINED:
+        this->playerJoinedSignalHandle(gameMessage.message.player_joined);
+        this->playerJoinedSignal();
         break;
     case START_GAME:
         this->startGameSignalHandle(gameMessage.message.start_game);
@@ -115,6 +121,38 @@ void TcpClient::joinOKSignalHandle(struct join_ok_msg joinOK)
     this->slotNumber = joinOK.slot_number;
     this->playerToken = joinOK.player_token;
     this->gameToken = joinOK.game_token;
+    // TODO
+    // future change in protocole; additional info about slots and name players currently in game
+
+
+    std::string *name = new std::string(this->playerName);
+    this->playersAtSlots[this->slotNumber] = name;
+
+    // adding other players in game to map
+    for(int i=0; i<4; i++) {
+        if(joinOK.slot_taken[i] && i != this->slotNumber) {
+            std::string *otherPlayerName = new std::string(joinOK.player_name[i]);
+            this->playersAtSlots[i] = otherPlayerName;
+        }
+    }
+
+    int numberOfPlayersInGame = 0;
+    for(std::map<int, std::string*>::iterator it = this->playersAtSlots.begin(); it != this->playersAtSlots.end(); ++it) {
+        if(it->second != nullptr)
+            numberOfPlayersInGame++;
+    }
+    qDebug() << "There is/are " << QString::number(numberOfPlayersInGame) << " players in game";
+
+    for(std::map<int, std::string*>::iterator it = this->playersAtSlots.begin(); it != this->playersAtSlots.end(); ++it) {
+        if(it->second != nullptr) {
+            std::string n = *(it->second);
+            qDebug() << QString::number(it->first) << " " << QString::fromStdString(n);
+        }
+    }
+
+
+
+
 }
 
 void TcpClient::startGameSignalHandle(struct start_game_msg startGame)
@@ -125,6 +163,35 @@ void TcpClient::startGameSignalHandle(struct start_game_msg startGame)
     this->numberOfCardsInHand = 5;
     this->firstCardInStack = startGame.first_card_in_stack;
     this->moveAtSlot = startGame.turn;
+}
+
+void TcpClient::playerJoinedSignalHandle(struct player_joined_msg playerJoined)
+{
+    char* playerName;
+    short slotNumber = playerJoined.slot_number;
+    strcpy(playerName, playerJoined.player_name);
+
+    this->slotOfLastJoinedPlayer = slotNumber;
+    strcpy(this->nameOfLastJoinedPlayer, playerName);
+
+    std::string name(playerName);
+    this->playersAtSlots[slotNumber] = &(name);
+
+    int numberOfPlayersInGame = 0;
+    for(std::map<int, std::string*>::iterator it = this->playersAtSlots.begin(); it != this->playersAtSlots.end(); ++it) {
+        if(it->second != nullptr) {
+            numberOfPlayersInGame++;
+        }
+    }
+
+    qDebug() << "There is/are " << QString::number(numberOfPlayersInGame) << " players in game";
+    for(std::map<int, std::string*>::iterator it = this->playersAtSlots.begin(); it != this->playersAtSlots.end(); ++it) {
+        if(it->second != nullptr) {
+            std::string n = *(it->second);
+            qDebug() << QString::number(it->first) << " " << QString::fromStdString(n);
+        }
+
+    }
 }
 
 void TcpClient::socketError(QAbstractSocket::SocketError err)

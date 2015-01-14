@@ -109,6 +109,15 @@ void *client_loop(void *arg) {
 			join_ok_msg.message.join_ok.player_token = player -> token;
 			join_ok_msg.message.join_ok.game_token = game -> game_token;
 			join_ok_msg.message.join_ok.slot_number = game -> players.size() - 1;
+
+			for (int i = 0; i < game -> players.size(); i++) {
+				join_ok_msg.message.join_ok.slot_taken[i] = true;
+				strcpy(join_ok_msg.message.join_ok.player_name[i], game -> players[i] -> player_name);
+			}
+			for (int i = game -> players.size(); i < 4; i++) {
+				join_ok_msg.message.join_ok.slot_taken[i] = false;
+			}
+
 			puts("--- Join OK");
 			if (send (rcv_sck, &join_ok_msg, sizeof join_ok_msg, 0) < 0) {
 				perror ("Error sending JOIN_OK to client socket");

@@ -85,6 +85,8 @@ struct join_ok_msg {
 	short slot_number;
 	int player_token;
 	int game_token;
+	char player_name[4][30];
+	bool slot_taken[4];
 };
 
 struct player_joined_msg {

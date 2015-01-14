@@ -60,7 +60,7 @@ struct ready_msg {
 };
 
 struct leave_game_msg {
-	short dummy;
+	short slot;
 };
 
 struct request_game_list_msg {
@@ -100,7 +100,6 @@ struct start_game_msg {
 
 struct next_turn_msg {
 	short turn;
-	char player_name[30];
 	short cards_picked_up;
 	struct card cards[30];
 };
@@ -114,7 +113,7 @@ struct game_end_msg {
 };
 
 struct player_left_msg {
-	char player_name[30];
+	short slot;
 };
 
 struct game_list_msg {

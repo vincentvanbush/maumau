@@ -46,6 +46,7 @@ struct player_info* new_player (char* player_name) {
 	ret -> token = rand();
 	strcpy (ret -> player_name, player_name);
 	ret -> ready = false;
+	ret -> left = false;
 	ret -> turns_to_miss = 0;
 
 	return ret;
@@ -136,6 +137,10 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 	// Update color/value requests and turns to sit
 	game -> color_request = move -> color_request;
 	game -> value_request = move -> value_request;
+
+	if (player -> cards.size() == 0) {
+		player -> finished = true;
+	}
 
 	return picked_cards;
 }

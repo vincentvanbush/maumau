@@ -10,6 +10,8 @@ struct player_info {
 	int token;
 	char player_name[30];
 	bool ready;
+	bool finished;
+	bool left;
 	std::vector<struct card> cards;
 	int socket;
 	short turns_to_miss;

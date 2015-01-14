@@ -149,7 +149,10 @@ void *client_loop(void *arg) {
 				
 				std::deque <struct card> cards_picked_up = update_game_state (&move, game);
 				
-				(++game -> turn) %= game -> players.size();
+				// Increment the turn modulo 4. Repeat if the selected player has finished
+				do
+					(++game -> turn) %= game -> players.size();
+				while (game -> players[game -> turn] -> finished);
 
 				// Broadcast move to others
 				for (int i = 0; i < game -> players.size() && game -> players[i] -> socket != rcv_sck; i++) {
@@ -166,10 +169,12 @@ void *client_loop(void *arg) {
 					next_turn_msg.msg_type = NEXT_TURN;
 					struct next_turn_msg* next_turn = &next_turn_msg.message.next_turn;
 					next_turn -> turn = game -> turn;
-					strcpy(next_turn -> player_name, game -> players[game -> turn] -> player_name);
+					//strcpy(next_turn -> player_name, game -> players[game -> turn] -> player_name);
 					next_turn -> cards_picked_up = cards_picked_up.size();
-					for (int i = 0; i < cards_picked_up.size(); i++)
-						next_turn -> cards[i] = cards_picked_up[i];
+					
+					if (player_token == game -> players[(game -> turn - 1) % game -> players.size()] -> token)
+						for (int i = 0; i < cards_picked_up.size(); i++)
+							next_turn -> cards[i] = cards_picked_up[i];
 
 					if (send (game -> players[i] -> socket, &msg_buffer, sizeof msg_buffer, 0) < 0) {
 						perror ("Error sending MOVE to client socket");
@@ -177,6 +182,31 @@ void *client_loop(void *arg) {
 					}
 					else printf("Sent MOVE to client %s\n", game -> players[i] -> player_name);
 				}
+
+				bool game_end = true;
+				for (int i = 0; i < game -> players.size(); i++) {
+					struct player_info* player = game -> players[i];
+					if (!player -> finished) {
+						game_end = false;
+						break;
+					}
+				}
+				if (game_end) {
+					game -> started = false;
+
+					struct game_msg game_end_msg;
+					game_end_msg.msg_type = GAME_END;
+					for (int i = 0; i < game -> players.size() && !game -> players[i] -> left; i++) {
+						if (send (game -> players[i] -> socket, &game_end_msg, sizeof game_end_msg, 0) < 0) {
+							perror ("Error sending GAME_END to client socket");
+							exit (EXIT_FAILURE);
+						}
+						else printf("Sent GAME_END to client %s\n", game -> players[i] -> player_name);
+					}
+
+					games[msg_buffer.game_id] = nullptr;
+				}
+
 			}
 			else {
 				struct game_msg invalid_move_msg;
@@ -194,10 +224,25 @@ void *client_loop(void *arg) {
 			int player_token = msg_buffer.token;
 			int game_token = msg_buffer.game_token;
 			int game_id = msg_buffer.game_id;
+			short slot = msg_buffer.message.leave_game.slot;
 			
-			bool invalid_game = true;
+			bool invalid_message = false;
+			struct game_info* game;
 
-			if (invalid_game) {
+			if (slot < 0 || slot > 3 || game_id < 0 || game_id > 49 || games[game_id] == nullptr
+				|| games[game_id] -> game_token != game_token) {
+				printf("No such game or invalid slot\n");
+				invalid_message = true;
+			}
+			else {
+				game = games[game_id];
+				if (game -> players[slot] -> token != player_token) { // wrong turn
+					printf("Wrong turn\n");
+					invalid_message = true;
+				}
+			}
+
+			if (invalid_message) {
 				struct game_msg cannot_leave_msg;
 				cannot_leave_msg.msg_type = CANNOT_LEAVE;
 				if (send (rcv_sck, &cannot_leave_msg, sizeof cannot_leave_msg, 0) < 0) {
@@ -207,7 +252,32 @@ void *client_loop(void *arg) {
 				else printf ("Cannot leave message sent\n");
 			}
 			else {
+				game -> players[slot] -> left = true;
 
+				// Broadcast message
+				struct game_msg player_left_msg;
+				player_left_msg.msg_type = PLAYER_LEFT;
+				player_left_msg.message.player_left.slot = slot;
+
+				for (int i = 0; i < game -> players.size() && i != slot; i++) {
+					if (send (game -> players[i] -> socket, &player_left_msg, sizeof player_left_msg, 0) < 0) {
+						perror ("Error sending PLAYER_LEFT to client socket");
+						exit (EXIT_FAILURE);
+					}
+					else printf("Sent PLAYER_LEFT to client %s\n", game -> players[i] -> player_name);
+				}
+
+				if (!game -> players[slot] -> finished) {
+					struct game_msg game_end_msg;
+					game_end_msg.msg_type = GAME_END;
+					for (int i = 0; i < game -> players.size() && i != slot; i++) {
+						if (send (game -> players[i] -> socket, &game_end_msg, sizeof game_end_msg, 0) < 0) {
+							perror ("Error sending GAME_END to client socket");
+							exit (EXIT_FAILURE);
+						}
+						else printf("Sent GAME_END to client %s\n", game -> players[i] -> player_name);
+					}
+				}
 			}
 
 		}

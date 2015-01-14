@@ -15,10 +15,8 @@
 #include "messages.h"
 #include "games.h"
 
-struct client_thread_arg {
-	int rcv_sck;
-	struct game_info** games;
-};
+struct game_info** games;
+pthread_mutex_t games_lock = PTHREAD_MUTEX_INITIALIZER;
 
 const int MAX_GAME_NUM = 50;
 
@@ -28,9 +26,7 @@ pthread_t main_thread;
 int games_num = 0;
 
 void *client_loop(void *arg) {
-	int rcv_sck = ((struct client_thread_arg*) arg) -> rcv_sck;
-	// std::map <int, struct game_info*> &games = *(((struct client_thread_arg*) arg) -> games);
-	struct game_info** games = ((struct client_thread_arg*) arg) -> games;
+	int rcv_sck = *(int*)arg;
 
 	printf ("Hello, this is the client thread (%d)\n", rcv_sck);
 	struct game_msg msg_buffer;
@@ -38,7 +34,6 @@ void *client_loop(void *arg) {
 
 
 	while (recv (rcv_sck, &msg_buffer, sizeof msg_buffer, 0) > 0) {
-		//if (recvfrom (srv_socket, &msg_buffer, sizeof msg_buffer, 0, (struct sockaddr*) &cl_addr, &fromlen) < 0)
 		int msg_type = msg_buffer.msg_type;
 		printf("(%d) ", msg_type);
 		switch (msg_type) {
@@ -48,7 +43,7 @@ void *client_loop(void *arg) {
 			struct join_game_msg msg = msg_buffer.message.join_game;
 			struct game_info* game;
 
-			game = games[msg.game_id];
+			
 			if (games[msg.game_id] == nullptr) {
 				// Game does not exist yet, we have to create it
 				printf("--- Game %d does not exist yet\n", msg.game_id);
@@ -65,11 +60,14 @@ void *client_loop(void *arg) {
 					break;
 				}
 				game = new_game(msg.game_id);
+				pthread_mutex_lock(&games_lock);
 				games[msg.game_id] = game;
 				games_num++;
+				pthread_mutex_unlock(&games_lock);
 			}
 			else {
 				// Game exists. Let the player join or send him an error.
+				game = games[msg.game_id];
 				printf("--- %s wants to join game %d\n", msg.player_name, msg.game_id);
 				printf("Game id %d has token %d\n", game -> game_id, game -> game_token);
 				if (game -> started || game -> players.size() >= 4) {
@@ -88,7 +86,9 @@ void *client_loop(void *arg) {
 			}			
 			
 			struct player_info* player = new_player (msg.player_name);
+			pthread_mutex_lock(&games_lock);
 			player_join_game (player, game);
+			pthread_mutex_unlock(&games_lock);
 			player -> socket = rcv_sck;
 
 			struct game_msg player_joined_msg;
@@ -121,6 +121,25 @@ void *client_loop(void *arg) {
 		
 		case MOVE: {
 			printf("Received move message\n");
+
+			int player_token = msg_buffer.token;
+			int game_token = msg_buffer.game_token;
+			int game_id = msg_buffer.game_id;
+			struct move_msg move = msg_buffer.message.move;
+
+			bool valid_move = validate_move (&move, games[game_id]);
+
+			if (valid_move) {
+				// do the move and broadcast it
+			}
+			else {
+				struct game_msg invalid_move_msg;
+				invalid_move_msg.msg_type = INVALID_MOVE;
+				if (send (rcv_sck, &invalid_move_msg, sizeof invalid_move_msg, 0) < 0) {
+					perror ("Error sending INVALID_MOVE to client socket");
+					exit (EXIT_FAILURE);
+				}
+			}
 		}
 		break;
 
@@ -160,7 +179,9 @@ void *client_loop(void *arg) {
 				break;
 			}
 
+			pthread_mutex_lock(&games_lock);
 			game -> players[player_index] -> ready = true;
+			pthread_mutex_unlock(&games_lock);
 
 			if (game -> players.size() >= 2) {
 				short ready_players = 0;
@@ -169,7 +190,9 @@ void *client_loop(void *arg) {
 						++ready_players;
 				if (ready_players == game -> players.size()) {
 					// all players are ready, so deal the cards and start the game
+					pthread_mutex_lock(&games_lock);
 					deal_cards (game);
+					pthread_mutex_unlock(&games_lock);
 
 					// send 'Start game' to all players in game
 					for (int i = 0; i < game -> players.size(); i++) {
@@ -186,9 +209,6 @@ void *client_loop(void *arg) {
 						
 						start_game -> turn = 0;
 
-						
-
-						// BROKEN
 						if (send (player_sck, &start_game_msg, sizeof start_game_msg, 0) < 0) {
 							perror ("Error sending START_GAME to client socket");
 							exit (EXIT_FAILURE);
@@ -207,6 +227,7 @@ void *client_loop(void *arg) {
 			printf("Received request game list message\n");
 
 			struct game_list_msg game_list;
+			pthread_mutex_lock(&games_lock);
 			for (int i = 0; i < MAX_GAME_NUM; i++) { 
 				if (games[i] == nullptr) {
 					game_list.game_exists[i] = false;
@@ -221,7 +242,7 @@ void *client_loop(void *arg) {
 					game_list.started[i] = games[i] -> started;
 				}
 			}
-
+			pthread_mutex_unlock(&games_lock);
 			struct game_msg game_list_msg;
 			game_list_msg.msg_type = GAME_LIST;
 			game_list_msg.message.game_list = game_list;
@@ -243,9 +264,9 @@ void *client_loop(void *arg) {
 
 void *main_loop(void *arg) {
 	
-	struct game_info** games_array = new struct game_info*[50];
+	games = new struct game_info*[50];
 	for (int i = 0; i < 50; i++) {
-		games_array[i] = nullptr;
+		games[i] = nullptr;
 	}
 	struct sockaddr_in srv_addr, cl_addr;
 
@@ -268,10 +289,7 @@ void *main_loop(void *arg) {
 		}
 
 		pthread_t client_thread;
-		struct client_thread_arg* arg = new struct client_thread_arg; // { rcv_sck, &games_array };
-		arg -> rcv_sck = rcv_sck;
-		arg -> games = games_array;
-		if (pthread_create (&client_thread, NULL, client_loop, arg)) {
+		if (pthread_create (&client_thread, NULL, client_loop, &rcv_sck)) {
 			perror ("Error creating client thread");
 			exit (EXIT_FAILURE);
 		}

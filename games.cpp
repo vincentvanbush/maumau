@@ -70,9 +70,9 @@ void deal_cards (struct game_info* game) {
 		}
 	}
 
-	struct card top_card = deck -> front();
+	struct card top = deck -> front();
 	deck -> pop_front();
-	game -> played_cards.push_back (top_card);
+	game -> played_cards.push_back (top);
 }
 
 struct card top_card (struct game_info* game) {
@@ -80,13 +80,24 @@ struct card top_card (struct game_info* game) {
 }
 
 bool validate_move (struct game_msg* move_msg, struct game_info* game) {
-	// One hell of a TODO :)
-	struct card top = top_card (game);
+	// if played cards count > 4, message is rubbish!
+	if (move_msg -> message.move.played_cards_count > 4) {
+		puts ("Malformed message, cards count > 4");
+		return false;
+	}
+
+	std::deque <struct card>& deck = game -> deck;
+	struct card top = deck.front(); // top_card (game);
 	struct move_msg &move = move_msg -> message.move;
 	std::vector <struct card> played_cards (move.played_cards, move.played_cards + move.played_cards_count);
-
 	int player_token = move_msg -> token;
 	int game_token = move_msg -> game_token;
+
+	// Check game token
+	if (game -> game_token != game_token) {
+		puts ("Invalid game token");
+		return false;
+	}
 
 	// Check if all played cards have the same value
 	short value = 0;
@@ -95,13 +106,14 @@ bool validate_move (struct game_msg* move_msg, struct game_info* game) {
 		value = played_cards[i].value;
 		if (prev_value == 0) continue;
 		if (prev_value != value) {
-			printf ("Played cards have different values\n");
+			puts ("Played cards have different values");
 			return false;
 		}
 	}
 
 	// Check if player's token equals the token of player at current turn slot
 	if (player_token != game -> players[game -> turn] -> token) {
+		puts ("Wrong player token");
 		return false;
 	}
 
@@ -111,46 +123,60 @@ bool validate_move (struct game_msg* move_msg, struct game_info* game) {
 		// No request: check top card
 		if (game -> color_request == 0 && game -> value_request == 0 && game -> turns_to_miss == 0) {
 			if (played_cards[0].color != top.color && played_cards[0].value != top.value) {
+				puts ("Top card does not match first played card");
 				return false;
 			}
 		}
 		// Color request: check color or play an ace
 		else if (game -> color_request != 0 && game -> color_request != played_cards[0].color) {
-			if (played_cards[0].value != ACE)
+			if (played_cards[0].value != ACE) {
+				puts ("There is a color request but the card is not right or an ace");
 				return false;
+			}
 		}
 		// Value request: check value or play a jack
-		else if (game -> value_request != 0 && game -> value_request != played_cards[0].color) {
-			if (played_cards[0].value != JACK)
+		else if (game -> value_request != 0 && game -> value_request != played_cards[0].value) {
+			if (played_cards[0].value != JACK) {
+				puts ("There is a value request but the card is not right or a jack");
 				return false;
+			}
 		}
 		// If challenged to eat cards...
 		else if (game -> cards_to_pick > 0) {
 			// with a 2 or 3, one can respond with 2, 3 or king	
 			if (top.value <= 3 && played_cards[0].value != top.value && played_cards[0].color != top.color
-				&& played_cards[0].value != 2 && played_cards[0].value != 3 && played_cards[0].value != KING)
+				&& played_cards[0].value != 2 && played_cards[0].value != 3 && played_cards[0].value != KING) {
+				puts ("There is a card pick challenge but no 2/3/K is played");
 				return false;
+			}
 			// with a king, one can respond with ONLY ONE KING (pike or heart)
 			else if (top.value == KING && played_cards.size() > 1 && played_cards[0].value != KING
-				&& played_cards[0].color != HEART && played_cards[0].color != PIKE)
+				&& played_cards[0].color != HEART && played_cards[0].color != PIKE) {
+				puts ("There is a card pick challenge with a king");
 				return false;
+			}
 		}
 		// If challenged to wait turns...
 		else if (game -> turns_to_miss > 0) {
 			// one can respond with 4s
-			if (played_cards[0].value != 4)
+			if (played_cards[0].value != 4) {
+				puts ("There is a turn wait challenge but no 4 is played");
 				return false;
+			}
 		}
 		// If making a color request...
 		else if (move.color_request != 0) {
 			// played card has to be ace
-			if (played_cards[0].value != ACE)
+			if (played_cards[0].value != ACE) {
+				puts ("Player requests a color but doesn't give an ace");
 				return false;
+			}
 		}
 		// If making a value request
 		else if (move.value_request != 0) {
 			// played card has to be jack
 			if (played_cards[0].value != JACK)
+				puts ("Player requests a value but doesn't give a jack");
 				return false;
 		}
 	}
@@ -177,26 +203,22 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 		player -> turns_to_miss--;
 		return picked_cards;
 	}
-
 	// if game turns to miss > 0 and no card is played, the player misses n turns
 	if (game -> turns_to_miss > 0 && move -> played_cards_count == 0) {
 		player -> turns_to_miss = game -> turns_to_miss;
 		game -> turns_to_miss = 0;
 	} else game -> turns_to_miss = move -> turns_for_next;
-
 	// Pick up n cards if move says so!
 	short n = move -> cards_picked_up_count;
 	if (n > 0) {
 		picked_cards = pick_n_cards (game, n, player_turn);
 		game -> cards_to_pick = 0;
 	} else game -> cards_to_pick = move -> cards_for_next;
-
 	// Transfer move's played cards to the front of the structure in game
 	std::deque <struct card> &cards_in_game = game -> played_cards;
 	for (int i = 0; i < move -> played_cards_count; i++) {
 		cards_in_game.push_front(move -> played_cards[i]);
 	}
-
 	std::vector <struct card> &player_cards = player -> cards;
 	std::deque <struct card> move_cards(move -> played_cards, move -> played_cards + move -> played_cards_count);
 	for (int i = 0; i < move_cards.size(); i++) {
@@ -207,15 +229,12 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 			}
 		}
 	}
-
 	// Update color/value requests and turns to sit
 	game -> color_request = move -> color_request;
 	game -> value_request = move -> value_request;
-
 	if (player -> cards.size() == 0) {
 		player -> finished = true;
 	}
-
 	return picked_cards;
 }
 

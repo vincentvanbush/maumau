@@ -139,24 +139,20 @@ void *client_loop(void *arg) {
 			struct game_info* game;
 			bool valid_move;
 
-			if (game_id < 0 || game_id > 49 || games[game_id] == nullptr
-				|| games[game_id] -> game_token != game_token) { // invalid game id/token
-				printf("Invalid game id/token\n");
+			if (game_id < 0 || game_id > 49 || games[game_id] == nullptr) {
+				printf("Game id out of bounds or game does not exist\n");
 				valid_move = false;
 			}
 			else {
 				game = games[game_id];
-				if (game -> players[game -> turn] -> token != player_token) { // wrong turn
-					printf("Wrong turn\n");
-					valid_move = false;
-				}
-				else valid_move = validate_move (&msg_buffer, game);
+				valid_move = validate_move (&msg_buffer, games[game_id]);
 			}
 
 			if (valid_move) {
 				// Update game state
 				
-				std::deque <struct card> cards_picked_up = update_game_state (&move, game);
+				std::deque <struct card> cards_picked_up;
+				cards_picked_up = update_game_state (&move, games[game_id]);
 				
 				// Increment the turn modulo 4. Repeat if the selected player has finished
 				do
@@ -213,6 +209,8 @@ void *client_loop(void *arg) {
 						else printf("Sent GAME_END to client %s\n", game -> players[i] -> player_name);
 					}
 
+					puts ("Deleting");
+					delete games[msg_buffer.game_id];
 					games[msg_buffer.game_id] = nullptr;
 				}
 
@@ -310,7 +308,7 @@ void *client_loop(void *arg) {
 			else {
 				game = games[msg_buffer.game_id];
 				// check if received player token is valid
-				bool invalid_player_token = true;
+				invalid_player_token = true;
 				
 				if (game == nullptr || game -> game_token != game_token) {
 					// if received game token is different to the actual one, send error

@@ -54,7 +54,6 @@ void *client_loop(void *arg) {
 				// Game does not exist yet, we have to create it
 				printf("--- Game %d does not exist yet\n", msg.game_id);
 				if (games_num > MAX_GAME_NUM - 1 || msg.game_id > 49) {
-					printf("--- Server is full\n");
 					struct game_msg error_msg;
 					error_msg.msg_type = CANNOT_JOIN;
 					socklen_t tolen = sizeof cl_addr;
@@ -68,7 +67,6 @@ void *client_loop(void *arg) {
 					break;
 				}
 				game = new_game(msg.game_id);
-				printf("Game id %d has generated token %d\n", game -> game_id, game -> game_token);
 				games[msg.game_id] = game;
 				games_num++;
 			}
@@ -95,7 +93,6 @@ void *client_loop(void *arg) {
 			struct player_info* player = new_player (msg.player_name);
 			player_join_game (player, game);
 			player -> socket = rcv_sck;
-			printf ("%s has socket descriptor %d\n", player -> player_name, rcv_sck);
 
 			struct game_msg join_ok_msg;
 			join_ok_msg.msg_type = JOIN_OK;
@@ -130,15 +127,12 @@ void *client_loop(void *arg) {
 
 			int player_token = msg_buffer.token;
 			int game_token = msg_buffer.game_token;
-			printf("User sent game token %d\n", game_token);
 			struct ready_msg ready_msg = msg_buffer.message.ready;
 
 			struct game_info* game = games[msg_buffer.game_id];
 
 			// if received game token is different to the actual one, send error
 			if (game -> game_token != game_token) {
-				printf ("ACTUAL GAME TOKEN = %d\n", game -> game_token);
-				printf("BREAK 1\n");
 				// TODO: send error message to client
 				break;	
 			}
@@ -153,20 +147,17 @@ void *client_loop(void *arg) {
 				}
 			}
 			if (invalid_player_token) {
-				printf("BREAK 2\n");
 				// TODO: send error message to client
 				break;
 			}
 
 			game -> players[player_index] -> ready = true;
 
-			printf("Game %d has %d players, ", game -> game_id, game -> players.size());
 			if (game -> players.size() >= 2) {
 				short ready_players = 0;
 				for (int i = 0; i < game -> players.size(); i++)
 					if (game -> players[i] -> ready)
 						++ready_players;
-				printf ("%d of whom ready\n", ready_players);
 				if (ready_players == game -> players.size()) {
 					// all players are ready, so deal the cards and start the game
 					deal_cards (game);
@@ -175,7 +166,6 @@ void *client_loop(void *arg) {
 					for (int i = 0; i < game -> players.size(); i++) {
 						int player_sck = game -> players[i] -> socket;
 						struct player_info* player = game -> players[i];
-						printf ("%s has socket descriptor %d\n", player -> player_name, player_sck);
 
 						struct game_msg start_game_msg;
 						start_game_msg.msg_type = START_GAME;

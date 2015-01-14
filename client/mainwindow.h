@@ -3,7 +3,7 @@
 
 #include <QMainWindow>
 
-#include "udpclient.h"
+#include "tcpclient.h"
 
 namespace Ui {
 class MainWindow;
@@ -16,7 +16,7 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
-    UdpClient *udpClient;
+    TcpClient *tcpClient;
     
 //private slots:
 public slots:

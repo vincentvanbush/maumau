@@ -1,26 +1,27 @@
-#include "udpclient.h"
+#include "tcpclient.h"
 
 
-UdpClient::UdpClient()
+TcpClient::TcpClient()
 {
-    this->socket = new QUdpSocket(this);
     this->serverIPAddress = "127.0.0.1";
     this->serverPort = 1234;
 
-
-    socket->bind(QHostAddress::LocalHost, qint16(12312));
-    connect(socket, SIGNAL(readyRead()), this, SLOT(readMessage()));
+    this->tcpSocket = new QTcpSocket(this);
+    connect(tcpSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(socketError(QAbstractSocket::SocketError)));
+    connect(tcpSocket, SIGNAL(connected()), this, SLOT(socketConnected()));
+    connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(readMessage()));
+    tcpSocket->connectToHost(this->serverIPAddress, this->serverPort);
 
 }
-UdpClient::~UdpClient()
+TcpClient::~TcpClient()
 {
 }
-void UdpClient::readMessage()
+void TcpClient::readMessage()
 {
     struct game_msg gameMessage;
     QHostAddress addr (serverIPAddress);
 
-    socket->readDatagram((char *) &gameMessage, (qint64) sizeof(gameMessage), &addr, &serverPort);
+    tcpSocket->read((char *) &gameMessage, (qint64) sizeof(gameMessage));
 
     int messageType = gameMessage.msg_type;
 
@@ -53,13 +54,9 @@ void UdpClient::readMessage()
         break;
     }
 
-//    if(messageType == JOIN_OK) {
-//        joinOKSignal(messageType);
-//    }
-
 }
 
-void UdpClient::sendJoinGameMessage(std::string playerName)
+void TcpClient::sendJoinGameMessage(std::string playerName, int gameID)
 {
     struct game_msg gameMessage;
     gameMessage.msg_type = 0;
@@ -67,21 +64,21 @@ void UdpClient::sendJoinGameMessage(std::string playerName)
     const char* playerNameChar = playerName.c_str();
 
     strcpy(gameMessage.message.join_game.player_name, playerNameChar);
-    gameMessage.message.join_game.game_id = 3;
+    gameMessage.message.join_game.game_id = gameID;
 
-    this->socket->writeDatagram((const char*) &gameMessage, sizeof(gameMessage), QHostAddress(serverIPAddress), serverPort);
+    this->tcpSocket->write((const char*) &gameMessage, (qint64) sizeof(gameMessage));
 }
 
 
-void UdpClient::sendRequestGamesMessage()
+void TcpClient::sendRequestGamesMessage()
 {
-    struct game_msg msg;
-    msg.msg_type = 13;
+    struct game_msg gameMessage;
+    gameMessage.msg_type = 13;
 
-    this->socket->writeDatagram((const char*) &msg, sizeof(msg), QHostAddress(serverIPAddress), serverPort);
+    this->tcpSocket->write((const char*) &gameMessage, (qint64) sizeof(gameMessage));
 }
 
-void UdpClient::gameListSignalHandle(struct game_list_msg gameList)
+void TcpClient::gameListSignalHandle(struct game_list_msg gameList)
 {
     for(int i=0; i<50; i++) {
         gameExists[i] = gameList.game_exists[i];
@@ -94,10 +91,20 @@ void UdpClient::gameListSignalHandle(struct game_list_msg gameList)
     }
 }
 
-void UdpClient::joinOKSignalHandle(struct join_ok_msg joinOK)
+void TcpClient::joinOKSignalHandle(struct join_ok_msg joinOK)
 {
     this->slotNumber = joinOK.slot_number;
     this->playerToken = joinOK.player_token;
     this->gameToken = joinOK.game_token;
 }
 
+void TcpClient::socketError(QAbstractSocket::SocketError err)
+{
+    qDebug() << "Problem with socket";
+    qDebug() << err;
+}
+
+void TcpClient::socketConnected()
+{
+    qDebug() << "Connection completed";
+}

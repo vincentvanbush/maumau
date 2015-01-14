@@ -14,9 +14,9 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    udpclient.cpp
+    tcpclient.cpp
 
 HEADERS  += mainwindow.h \
-    udpclient.h
+    tcpclient.h
 
 FORMS    += mainwindow.ui

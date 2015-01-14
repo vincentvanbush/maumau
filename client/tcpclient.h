@@ -1,9 +1,10 @@
-#ifndef UDPCLIENT
-#define UDPCLIENT
+#ifndef TCPCLIENT
+#define TCPCLIENT
 
 
 #include <QtNetwork/QHostInfo>
 #include <QtNetwork/QUdpSocket>
+#include <QtNetwork/QTcpSocket>
 #include <QtNetwork/QHostAddress>
 
 #include "../games.h"
@@ -14,14 +15,14 @@
 
 
 
-class UdpClient : public QObject {
+class TcpClient : public QObject {
     Q_OBJECT
 
 public:
-    UdpClient();
-    ~UdpClient();
+    TcpClient();
+    ~TcpClient();
     void sendRequestGamesMessage();
-    void sendJoinGameMessage(std::string);
+    void sendJoinGameMessage(std::string, int);
 
     void gameListSignalHandle(struct game_list_msg);
     void joinOKSignalHandle(struct join_ok_msg);
@@ -63,7 +64,7 @@ signals:
 
 
 private:
-    QUdpSocket *socket;
+    QTcpSocket *tcpSocket;
 
     QString serverIPAddress;
     quint16 serverPort;
@@ -73,10 +74,13 @@ private:
 
     std::vector<struct card> cardsList;
 
+private slots:
+    void socketError(QAbstractSocket::SocketError);
+    void socketConnected();
 
 
 };
 
 
-#endif // UDPCLIENT
+#endif // TCPCLIENT
 

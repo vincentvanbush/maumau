@@ -23,9 +23,11 @@ public:
     ~TcpClient();
     void sendRequestGamesMessage();
     void sendJoinGameMessage(std::string, int);
+    void sendReadyMessage();
 
     void gameListSignalHandle(struct game_list_msg);
     void joinOKSignalHandle(struct join_ok_msg);
+    void startGameSignalHandle(struct start_game_msg);
 
     // information about existing games
     bool gameExists[50];
@@ -34,45 +36,45 @@ public:
     char playerNick[50][4][30];
     bool started[50];
 
-    // information about current game
+    // information about player and current game
     short slotNumber;
     int playerToken;
     int gameToken;
+
+    int gameIdentifier;
+    char playerName[30];
+
+
+    // information about current hand
+    int numberOfCardsInHand;
+    std::vector<struct card> cardsInHand;
+    struct card firstCardInStack;
+    short moveAtSlot;
 
 //private slots:
 public slots:
     void readMessage();
 
-
-
-
-
-
-
 signals:
     void cannotJoinSignal();
     void joinOKSignal();
+    void gameListSignal();
+    void invalidMoveSignal();
 
     void playerJoinedSignal();
     void starGameSignal();
     void nextTurnSignal();
-    void invalidMoveSignal();
     void gameEndSignal();
     void playerLeftSignal();
 
-    void gameListSignal();
+
 
 
 private:
     QTcpSocket *tcpSocket;
-
     QString serverIPAddress;
     quint16 serverPort;
 
-    int numberOfCardsInHand;
-
-
-    std::vector<struct card> cardsList;
 
 private slots:
     void socketError(QAbstractSocket::SocketError);

@@ -67,8 +67,8 @@ signals:
     void gameListSignal();
     void invalidMoveSignal();
     void playerJoinedSignal();
-
     void starGameSignal();
+
     void nextTurnSignal();
     void gameEndSignal();
     void playerLeftSignal();

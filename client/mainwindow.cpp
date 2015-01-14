@@ -58,6 +58,28 @@ void MainWindow::onJoinOKMessageRecv()
     ui->plainTextEdit->appendPlainText("GameToken" + gameToken);
     ui->plainTextEdit->appendPlainText("");
 
+
+    int numberOfOtherPlayersInGame = 0;
+    for(std::map<int, std::string*>::iterator it = tcpClient->playersAtSlots.begin(); it != tcpClient->playersAtSlots.end(); ++it) {
+        if(it->second != nullptr && it->first != tcpClient->slotNumber) {
+            numberOfOtherPlayersInGame ++;
+        }
+    }
+    if(numberOfOtherPlayersInGame != 0) {
+        ui->plainTextEdit->appendPlainText("There is " + QString::number(numberOfOtherPlayersInGame) + " other players in game");
+    }
+    else {
+        ui->plainTextEdit->appendPlainText("There are no othre players in game");
+    }
+    for(std::map<int, std::string*>::iterator it = tcpClient->playersAtSlots.begin(); it != tcpClient->playersAtSlots.end(); ++it) {
+        if(it->second != nullptr && it->first != tcpClient->slotNumber) {
+            QString name = QString::fromStdString(*(it->second));
+            ui->plainTextEdit->appendPlainText("Slot " + QString::number(it->first) + "\t" + name);
+        }
+    }
+
+
+
 }
 void MainWindow::onGameListMessageRecv()
 {
@@ -112,7 +134,5 @@ void MainWindow::onStartGameMessageRecv()
 
 void MainWindow::onPlayerJoinedMessageRecv()
 {
-
     ui->plainTextEdit->appendPlainText("New player " + QString::fromUtf8(tcpClient->nameOfLastJoinedPlayer) + " joined at slot " + QString::number(tcpClient->slotOfLastJoinedPlayer));
-
 }

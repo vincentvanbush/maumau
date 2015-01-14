@@ -126,15 +126,33 @@ void TcpClient::joinOKSignalHandle(struct join_ok_msg joinOK)
 
 
     std::string *name = new std::string(this->playerName);
-    //std::string name(this->playerName);
     this->playersAtSlots[this->slotNumber] = name;
-    qDebug() << "There is/are " << QString::number(this->playersAtSlots.size()) << " players in game";
+
+    // adding other players in game to map
+    for(int i=0; i<4; i++) {
+        if(joinOK.slot_taken[i] && i != this->slotNumber) {
+            std::string *otherPlayerName = new std::string(joinOK.player_name[i]);
+            this->playersAtSlots[i] = otherPlayerName;
+        }
+    }
+
+    int numberOfPlayersInGame = 0;
+    for(std::map<int, std::string*>::iterator it = this->playersAtSlots.begin(); it != this->playersAtSlots.end(); ++it) {
+        if(it->second != nullptr)
+            numberOfPlayersInGame++;
+    }
+    qDebug() << "There is/are " << QString::number(numberOfPlayersInGame) << " players in game";
+
     for(std::map<int, std::string*>::iterator it = this->playersAtSlots.begin(); it != this->playersAtSlots.end(); ++it) {
         if(it->second != nullptr) {
             std::string n = *(it->second);
             qDebug() << QString::number(it->first) << " " << QString::fromStdString(n);
         }
     }
+
+
+
+
 }
 
 void TcpClient::startGameSignalHandle(struct start_game_msg startGame)
@@ -158,7 +176,15 @@ void TcpClient::playerJoinedSignalHandle(struct player_joined_msg playerJoined)
 
     std::string name(playerName);
     this->playersAtSlots[slotNumber] = &(name);
-    qDebug() << "There is/are " << QString::number(this->playersAtSlots.size()) << " players in game";
+
+    int numberOfPlayersInGame = 0;
+    for(std::map<int, std::string*>::iterator it = this->playersAtSlots.begin(); it != this->playersAtSlots.end(); ++it) {
+        if(it->second != nullptr) {
+            numberOfPlayersInGame++;
+        }
+    }
+
+    qDebug() << "There is/are " << QString::number(numberOfPlayersInGame) << " players in game";
     for(std::map<int, std::string*>::iterator it = this->playersAtSlots.begin(); it != this->playersAtSlots.end(); ++it) {
         if(it->second != nullptr) {
             std::string n = *(it->second);

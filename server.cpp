@@ -127,10 +127,43 @@ void *client_loop(void *arg) {
 			int game_id = msg_buffer.game_id;
 			struct move_msg move = msg_buffer.message.move;
 
-			bool valid_move = validate_move (&move, games[game_id]);
+			struct game_info* game = games[game_id];
+
+			bool valid_move = validate_move (&move, game);
 
 			if (valid_move) {
-				// do the move and broadcast it
+				// Update game state
+				(++game -> turn) %= game -> players.size();
+
+				std::deque <struct card> cards_picked_up = update_game_state (&move, game);
+
+
+				// Broadcast move to others
+				for (int i = 0; i < game -> players.size() && game -> players[i] -> socket != rcv_sck; i++) {
+					if (send (game -> players[i] -> socket, &msg_buffer, sizeof msg_buffer, 0) < 0) {
+						perror ("Error sending MOVE to client socket");
+						exit (EXIT_FAILURE);
+					}
+					else printf("Sent MOVE to client %s\n", game -> players[i] -> player_name);
+				}
+
+				// Send NEXT_TURN to all players, augmented with cards picked up for the sender
+				for (int i = 0; i < game -> players.size(); i++) {
+					struct game_msg next_turn_msg;
+					next_turn_msg.msg_type = NEXT_TURN;
+					struct next_turn_msg* next_turn = &next_turn_msg.message.next_turn;
+					next_turn -> turn = game -> turn;
+					strcpy(next_turn -> player_name, game -> players[game -> turn] -> player_name);
+					next_turn -> cards_picked_up = cards_picked_up.size();
+					for (int i = 0; i < cards_picked_up.size(); i++)
+						next_turn -> cards[i] = cards_picked_up[i];
+
+					if (send (game -> players[i] -> socket, &msg_buffer, sizeof msg_buffer, 0) < 0) {
+						perror ("Error sending MOVE to client socket");
+						exit (EXIT_FAILURE);
+					}
+					else printf("Sent MOVE to client %s\n", game -> players[i] -> player_name);
+				}
 			}
 			else {
 				struct game_msg invalid_move_msg;

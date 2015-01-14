@@ -34,12 +34,16 @@ struct card {
 // Sent by both client and server
 
 struct move_msg {
+	short played_cards_count;
 	struct card played_cards[4];
+
 	short color_request;
 	short value_request;
-	short cards_to_pick_up;
-	short turns_to_miss;
-	struct card cards_picked_up[20];
+
+	short cards_for_next;
+	short turns_for_next;
+
+	short cards_picked_up_count;
 };
 
 // Sent by client

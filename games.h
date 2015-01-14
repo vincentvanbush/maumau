@@ -12,6 +12,7 @@ struct player_info {
 	bool ready;
 	std::vector<struct card> cards;
 	int socket;
+	short turns_to_miss;
 };
 
 struct game_info {
@@ -24,6 +25,7 @@ struct game_info {
 	short color_request;
 	short value_request;
 	short turns_to_miss;
+	short cards_to_pick;
 	bool started;
 };
 
@@ -36,5 +38,11 @@ short player_join_game (struct player_info*, struct game_info*);
 void deal_cards (struct game_info*);
 
 bool validate_move (struct move_msg*, struct game_info*);
+
+bool card_equals (struct card, struct card);
+
+std::deque <struct card> pick_n_cards (struct game_info*, short, short);
+
+std::deque <struct card> update_game_state (struct move_msg*, struct game_info*);
 
 #endif

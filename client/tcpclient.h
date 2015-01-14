@@ -28,6 +28,7 @@ public:
     void gameListSignalHandle(struct game_list_msg);
     void joinOKSignalHandle(struct join_ok_msg);
     void startGameSignalHandle(struct start_game_msg);
+    void playerJoinedSignalHandle(struct player_joined_msg);
 
     // information about existing games
     bool gameExists[50];
@@ -43,6 +44,11 @@ public:
 
     int gameIdentifier;
     char playerName[30];
+
+    int slotOfLastJoinedPlayer;
+    char nameOfLastJoinedPlayer[30];
+
+    std::map<int, std::string*> playersAtSlots;
 
 
     // information about current hand
@@ -60,8 +66,8 @@ signals:
     void joinOKSignal();
     void gameListSignal();
     void invalidMoveSignal();
-
     void playerJoinedSignal();
+
     void starGameSignal();
     void nextTurnSignal();
     void gameEndSignal();

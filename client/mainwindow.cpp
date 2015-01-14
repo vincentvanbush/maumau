@@ -18,6 +18,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(tcpClient, SIGNAL(gameListSignal()), this, SLOT(onGameListMessageRecv()));
     connect(tcpClient, SIGNAL(cannotJoinSignal()), this, SLOT(onCannotJoinMessageRecv()));
     connect(tcpClient, SIGNAL(starGameSignal()), this, SLOT(onStartGameMessageRecv()));
+    connect(tcpClient, SIGNAL(playerJoinedSignal()), this, SLOT(onPlayerJoinedMessageRecv()));
 }
 
 MainWindow::~MainWindow()
@@ -107,5 +108,11 @@ void MainWindow::onStartGameMessageRecv()
     }
     ui->plainTextEdit->appendPlainText("Card in top of stack:");
     ui->plainTextEdit->appendPlainText("\t" + QString::number(tcpClient->firstCardInStack.color) + "\t" + QString::number(tcpClient->firstCardInStack.value));
+}
+
+void MainWindow::onPlayerJoinedMessageRecv()
+{
+
+    ui->plainTextEdit->appendPlainText("New player " + QString::fromUtf8(tcpClient->nameOfLastJoinedPlayer) + " joined at slot " + QString::number(tcpClient->slotOfLastJoinedPlayer));
 
 }

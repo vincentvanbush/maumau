@@ -4,6 +4,7 @@
 #include <QMainWindow>
 
 #include "tcpclient.h"
+#include "../messages.h"
 
 namespace Ui {
 class MainWindow;
@@ -22,10 +23,13 @@ public:
 public slots:
     void onRequestGamesButtonClicked();
     void onJoinGameButtonClicked();
+    void onReadyButtonClicked();
 
     void onJoinOKMessageRecv();
     void onGameListMessageRecv();
     void onCannotJoinMessageRecv();
+    void onInvalidMoveMessageRecv();
+    void onStartGameMessageRecv();
 
 
 

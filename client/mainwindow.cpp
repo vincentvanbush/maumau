@@ -11,11 +11,13 @@ MainWindow::MainWindow(QWidget *parent) :
     // signals from interface
     connect(ui->requestGamesButton, SIGNAL(clicked()), this, SLOT(onRequestGamesButtonClicked()));
     connect(ui->joinGameButton, SIGNAL(clicked()), this, SLOT(onJoinGameButtonClicked()));
+    connect(ui->readyButton, SIGNAL(clicked()), this, SLOT(onReadyButtonClicked()));
 
     // reacting on messages from server
     connect(tcpClient, SIGNAL(joinOKSignal()), this, SLOT(onJoinOKMessageRecv()));
     connect(tcpClient, SIGNAL(gameListSignal()), this, SLOT(onGameListMessageRecv()));
     connect(tcpClient, SIGNAL(cannotJoinSignal()), this, SLOT(onCannotJoinMessageRecv()));
+    connect(tcpClient, SIGNAL(starGameSignal()), this, SLOT(onStartGameMessageRecv()));
 }
 
 MainWindow::~MainWindow()
@@ -38,6 +40,10 @@ void MainWindow::onJoinGameButtonClicked()
     int gameID = id.toInt();
     tcpClient->sendJoinGameMessage(playerName, gameID);
 }
+void MainWindow::onReadyButtonClicked()
+{
+    tcpClient->sendReadyMessage();
+}
 
 void MainWindow::onJoinOKMessageRecv()
 {
@@ -52,7 +58,6 @@ void MainWindow::onJoinOKMessageRecv()
     ui->plainTextEdit->appendPlainText("");
 
 }
-
 void MainWindow::onGameListMessageRecv()
 {
     QString gameId;
@@ -80,8 +85,27 @@ void MainWindow::onGameListMessageRecv()
     }
     ui->plainTextEdit->appendPlainText("");
 }
-
 void MainWindow::onCannotJoinMessageRecv()
 {
     ui->plainTextEdit->appendPlainText("---Game full. Cannot join");
+}
+void MainWindow::onInvalidMoveMessageRecv()
+{
+    ui->plainTextEdit->appendPlainText("---Invalid move. Try again\n");
+}
+void MainWindow::onStartGameMessageRecv()
+{
+    QString numOfCards = QString::number(tcpClient->numberOfCardsInHand);
+
+    ui->plainTextEdit->clear();
+    ui->plainTextEdit->appendPlainText("Cards in hand: " + numOfCards);
+    for(std::vector<card>::iterator it = tcpClient->cardsInHand.begin(); it != tcpClient->cardsInHand.end(); ++it){
+        struct card card = *it;
+        short color = card.color;
+        short figure = card.value;
+        ui->plainTextEdit->appendPlainText("\t" + QString::number(color) + "\t" + QString::number(figure));
+    }
+    ui->plainTextEdit->appendPlainText("Card in top of stack:");
+    ui->plainTextEdit->appendPlainText("\t" + QString::number(tcpClient->firstCardInStack.color) + "\t" + QString::number(tcpClient->firstCardInStack.value));
+
 }

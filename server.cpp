@@ -150,7 +150,7 @@ void *client_loop(void *arg) {
 					printf("Wrong turn\n");
 					valid_move = false;
 				}
-				else valid_move = validate_move (&move, game);
+				else valid_move = validate_move (&msg_buffer, game);
 			}
 
 			if (valid_move) {

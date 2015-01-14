@@ -39,7 +39,7 @@ short player_join_game (struct player_info*, struct game_info*);
 
 void deal_cards (struct game_info*);
 
-bool validate_move (struct move_msg*, struct game_info*);
+bool validate_move (struct game_msg*, struct game_info*);
 
 bool card_equals (struct card, struct card);
 

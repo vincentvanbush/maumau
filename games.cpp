@@ -79,8 +79,82 @@ struct card top_card (struct game_info* game) {
 	return game -> deck.front();
 }
 
-bool validate_move (struct move_msg* move, struct game_info* game) {
+bool validate_move (struct game_msg* move_msg, struct game_info* game) {
 	// One hell of a TODO :)
+	struct card top = top_card (game);
+	struct move_msg &move = move_msg -> message.move;
+	std::vector <struct card> played_cards (move.played_cards, move.played_cards + move.played_cards_count);
+
+	int player_token = move_msg -> token;
+	int game_token = move_msg -> game_token;
+
+	// Check if all played cards have the same value
+	short value = 0;
+	for (int i = 0; i < played_cards.size(); i++) {
+		short prev_value = value;
+		value = played_cards[i].value;
+		if (prev_value == 0) continue;
+		if (prev_value != value) {
+			printf ("Played cards have different values\n");
+			return false;
+		}
+	}
+
+	// Check if player's token equals the token of player at current turn slot
+	if (player_token != game -> players[game -> turn] -> token) {
+		return false;
+	}
+
+	// Check if first card played has the same color or value as top card...
+	// or if first card conforms to the request
+	if (played_cards.size() > 0) {
+		// No request: check top card
+		if (game -> color_request == 0 && game -> value_request == 0 && game -> turns_to_miss == 0) {
+			if (played_cards[0].color != top.color && played_cards[0].value != top.value) {
+				return false;
+			}
+		}
+		// Color request: check color or play an ace
+		else if (game -> color_request != 0 && game -> color_request != played_cards[0].color) {
+			if (played_cards[0].value != ACE)
+				return false;
+		}
+		// Value request: check value or play a jack
+		else if (game -> value_request != 0 && game -> value_request != played_cards[0].color) {
+			if (played_cards[0].value != JACK)
+				return false;
+		}
+		// If challenged to eat cards...
+		else if (game -> cards_to_pick > 0) {
+			// with a 2 or 3, one can respond with 2, 3 or king	
+			if (top.value <= 3 && played_cards[0].value != top.value && played_cards[0].color != top.color
+				&& played_cards[0].value != 2 && played_cards[0].value != 3 && played_cards[0].value != KING)
+				return false;
+			// with a king, one can respond with ONLY ONE KING (pike or heart)
+			else if (top.value == KING && played_cards.size() > 1 && played_cards[0].value != KING
+				&& played_cards[0].color != HEART && played_cards[0].color != PIKE)
+				return false;
+		}
+		// If challenged to wait turns...
+		else if (game -> turns_to_miss > 0) {
+			// one can respond with 4s
+			if (played_cards[0].value != 4)
+				return false;
+		}
+		// If making a color request...
+		else if (move.color_request != 0) {
+			// played card has to be ace
+			if (played_cards[0].value != ACE)
+				return false;
+		}
+		// If making a value request
+		else if (move.value_request != 0) {
+			// played card has to be jack
+			if (played_cards[0].value != JACK)
+				return false;
+		}
+	}
+
 	return true;
 }
 

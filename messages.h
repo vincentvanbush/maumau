@@ -42,10 +42,7 @@ struct move_msg {
 	short color_request;
 	short value_request;
 
-	short cards_for_next;
-	short turns_for_next;
-
-	short cards_picked_up_count;
+	//short cards_picked_up_count;
 };
 
 // Sent by client
@@ -104,6 +101,8 @@ struct next_turn_msg {
 	short turn;
 	short cards_picked_up;
 	struct card cards[30];
+	short cards_for_next;
+	short turns_for_next;
 };
 
 struct invalid_move_msg {

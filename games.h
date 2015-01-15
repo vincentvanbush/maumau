@@ -43,6 +43,8 @@ bool validate_move (struct game_msg*, struct game_info*);
 
 bool card_equals (struct card, struct card);
 
+bool is_finished (struct game_info*);
+
 std::deque <struct card> pick_n_cards (struct game_info*, short, short);
 
 std::deque <struct card> update_game_state (struct move_msg*, struct game_info*);

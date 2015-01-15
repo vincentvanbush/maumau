@@ -17,6 +17,7 @@ const short GAME_LIST = 12;
 const short REQUEST_GAME_LIST = 13;
 const short CANNOT_READY = 14;
 const short CANNOT_LEAVE = 15;
+const short PICK_CARDS = 16;
 
 const short KING = 20;
 const short QUEEN = 21;
@@ -99,10 +100,14 @@ struct start_game_msg {
 
 struct next_turn_msg {
 	short turn;
-	short cards_picked_up;
-	struct card cards[30];
 	short cards_for_next;
 	short turns_for_next;
+};
+
+struct pick_cards_msg {
+	short slot;
+	short count;
+	struct card cards[30];
 };
 
 struct invalid_move_msg {
@@ -141,6 +146,7 @@ struct game_msg {
 		struct player_joined_msg	player_joined;
 		struct start_game_msg		start_game;
 		struct next_turn_msg		next_turn;
+		struct pick_cards_msg		pick_cards;
 		struct invalid_move_msg		invalid_move;
 		struct game_end_msg			game_end;
 		struct player_left_msg		player_left;

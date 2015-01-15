@@ -227,20 +227,22 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 		return picked_cards;
 	}
 
+
+
 	// if game turns to miss > 0 and no card is played, the player misses n turns
 	if (game -> turns_to_miss > 0 && move -> played_cards_count == 0) {
 		player -> turns_to_miss = game -> turns_to_miss;
 		game -> turns_to_miss = 0;
 	}
 
-	else if (game -> turns_to_miss > 0) { // if game turns to miss > 0 and 4's are played, add the number of played cards
+	else if (game -> turns_to_miss > 0 && move -> played_cards_count > 0) { // if game turns to miss > 0 and 4's are played, add the number of played cards
 		game -> turns_to_miss = move -> played_cards_count;
 	}
 
 	// Pick up n cards if move says so!
 	short n = game -> cards_to_pick;
 	if (n > 0) { // if has to pick up cards
-		if (move -> played_cards_count == 0) {
+		if (move -> played_cards_count == 0) { // player puts no card, so should eat
 			picked_cards = pick_n_cards (game, n, player_turn);
 			game -> cards_to_pick = 0;
 		}
@@ -253,6 +255,10 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 		else if (move -> played_cards[0].value == KING) {
 			game -> cards_to_pick += 5;
 		}
+	}
+	// If the player doesn't play any card and there were no 2/3/K's, then pick one card
+	else if (move -> played_cards_count == 0) {
+		picked_cards = pick_n_cards (game, 1, player_turn);
 	}
 
 	// Transfer move's played cards to the front of the structure in game
@@ -305,13 +311,12 @@ std::deque <struct card> pick_n_cards (struct game_info* game, short n, short pl
 }
 
 bool is_finished (struct game_info* game) {
-	bool game_end = true;
+	short finished_players = 0;
 	for (int i = 0; i < game -> players.size(); i++) {
 		struct player_info* player = game -> players[i];
-		if (!player -> finished) {
-			game_end = false;
-			break;
-		}
+		if (!player -> finished) ++finished_players;
 	}
-	return game_end;
+	if (finished_players == game -> players.size() - 1) 
+		return true;
+	return false;
 }

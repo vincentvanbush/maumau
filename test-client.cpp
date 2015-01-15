@@ -118,6 +118,25 @@ int main(int argc, char* argv[]) {
 			scanf("%d", &msg_buffer.game_id);
 		}
 
+		else if (msg_buffer.msg_type == MOVE) {
+			printf("Enter your player token ");
+			scanf("%d", &msg_buffer.token);
+			printf("Enter your game token ");
+			scanf("%d", &msg_buffer.game_token);
+			printf("Enter your game id ");
+			scanf("%d", &msg_buffer.game_id);
+
+			printf("Enter number of played cards ");
+			scanf("%d", &msg_buffer.message.move.played_cards_count);
+
+			for (int i = 0; i < msg_buffer.message.move.played_cards_count; i++) {
+				printf("Enter card %d value and color ", i);
+				scanf("%d %d", &msg_buffer.message.move.played_cards[i].value, &msg_buffer.message.move.played_cards[i].color);
+			}
+
+
+		}
+
 
 		socklen_t tolen = sizeof srv_addr;
 		int sent;

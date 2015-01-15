@@ -181,11 +181,11 @@ void *client_loop(void *arg) {
 						for (int i = 0; i < cards_picked_up.size(); i++)
 							next_turn -> cards[i] = cards_picked_up[i];
 
-					if (send (game -> players[i] -> socket, &msg_buffer, sizeof msg_buffer, 0) < 0) {
-						perror ("Error sending MOVE to client socket");
+					if (send (game -> players[i] -> socket, &next_turn_msg, sizeof next_turn_msg, 0) < 0) {
+						perror ("Error sending NEXT_TURN to client socket");
 						exit (EXIT_FAILURE);
 					}
-					else printf("Sent MOVE to client %s\n", game -> players[i] -> player_name);
+					else printf("Sent NEXT_TURN to client %s\n", game -> players[i] -> player_name);
 				}
 
 				bool game_end = is_finished (game);
@@ -488,6 +488,10 @@ int main(int argc, char* argv[]) {
 			printf("%d %d, ", games[id] -> deck[i].value, games[id] -> deck[i].color);
 		}
 
+		printf("Color request: %d\n", games[id] -> color_request);
+		printf("Value request: %d\n", games[id] -> value_request);
+		printf("Turns to miss: %d\n", games[id] -> turns_to_miss);
+		printf("Cards to pick: %d\n", games[id] -> cards_to_pick);
 
 		printf("\n\n");
 	}

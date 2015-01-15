@@ -12,6 +12,10 @@ struct game_info* new_game(int id) {
 	ret->game_token = rand();
 	ret->game_id = id;
 	ret->turn = 0;
+	ret->color_request = 0;
+	ret->value_request = 0;
+	ret->turns_to_miss = 0;
+	ret->cards_to_pick = 0;
 
 	// shuffle the deck
 	struct card card_array[52] = { 
@@ -229,7 +233,7 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 		game -> turns_to_miss = 0;
 	}
 
-	else { // if game turns to miss > 0 and 4's are played, add the number of played cards
+	else if (game -> turns_to_miss > 0) { // if game turns to miss > 0 and 4's are played, add the number of played cards
 		game -> turns_to_miss = move -> played_cards_count;
 	}
 
@@ -309,4 +313,5 @@ bool is_finished (struct game_info* game) {
 			break;
 		}
 	}
+	return game_end;
 }

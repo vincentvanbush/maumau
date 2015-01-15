@@ -188,14 +188,7 @@ void *client_loop(void *arg) {
 					else printf("Sent MOVE to client %s\n", game -> players[i] -> player_name);
 				}
 
-				bool game_end = true;
-				for (int i = 0; i < game -> players.size(); i++) {
-					struct player_info* player = game -> players[i];
-					if (!player -> finished) {
-						game_end = false;
-						break;
-					}
-				}
+				bool game_end = is_finished (game);
 				if (game_end) {
 					game -> started = false;
 

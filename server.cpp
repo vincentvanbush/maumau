@@ -171,7 +171,7 @@ void *client_loop(void *arg) {
 
 				// If sender has to pick up any cards, broadcast PICK_CARDS to all players.
 				// For the sender only, augment the message with the cards he picks.
-				for (int i = 0; i < game -> players.size(); i++) {
+				if (cards_picked_up.size() > 0) for (int i = 0; i < game -> players.size(); i++) {
 					struct game_msg pick_cards_msg;
 					pick_cards_msg.msg_type = PICK_CARDS;
 

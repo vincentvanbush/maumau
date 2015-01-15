@@ -24,13 +24,21 @@ public slots:
     void onRequestGamesButtonClicked();
     void onJoinGameButtonClicked();
     void onReadyButtonClicked();
+    void onLeaveGameButtonClicked();
 
-    void onJoinOKMessageRecv();
-    void onGameListMessageRecv();
+
+
     void onCannotJoinMessageRecv();
-    void onInvalidMoveMessageRecv();
-    void onStartGameMessageRecv();
+    void onCannotReadyMessageRecv();
+    void onCannotLeaveMessageRecv();
+    void onJoinOKMessageRecv();
     void onPlayerJoinedMessageRecv();
+    void onStartGameMessageRecv();
+    void onNextTurnMessageRecv();
+    void onInvalidMoveMessageRecv();
+    void onGameEndMessageRecv();
+    void onPlayerLeftMessageRecv();
+    void onGameListMessageRecv();
 
 
 

@@ -21,6 +21,8 @@ ushort server_port = 1234;
 struct sockaddr_in srv_addr = local_address(server_port);
 int cl_socket = create_socket();
 
+int game_token, player_token, game_id;
+
 void *recv_loop(void *arg) {
 	struct game_msg msg_buffer;
 	while (1) {
@@ -55,8 +57,8 @@ void *recv_loop(void *arg) {
 
 		else if (msg_buffer.msg_type == JOIN_OK) {
 			struct join_ok_msg join_ok = msg_buffer.message.join_ok;
-			int player_token = join_ok.player_token;
-			int game_token = join_ok.game_token;
+			player_token = join_ok.player_token;
+			game_token = join_ok.game_token;
 			printf("Player token: %d\nGame token: %d\n", player_token, game_token);
 		}
 
@@ -107,24 +109,19 @@ int main(int argc, char* argv[]) {
 			scanf("%s", &msg_buffer.message.join_game.player_name);
 			printf("Enter game id ");
 			scanf("%d", &msg_buffer.message.join_game.game_id);
+			game_id = msg_buffer.message.join_game.game_id;
 		}
 
 		else if (msg_buffer.msg_type == READY) {
-			printf("Enter your player token ");
-			scanf("%d", &msg_buffer.token);
-			printf("Enter your game token ");
-			scanf("%d", &msg_buffer.game_token);
-			printf("Enter your game id ");
-			scanf("%d", &msg_buffer.game_id);
+			msg_buffer.token = player_token;
+			msg_buffer.game_token = game_token;
+			msg_buffer.game_id = game_id;
 		}
 
 		else if (msg_buffer.msg_type == MOVE) {
-			printf("Enter your player token ");
-			scanf("%d", &msg_buffer.token);
-			printf("Enter your game token ");
-			scanf("%d", &msg_buffer.game_token);
-			printf("Enter your game id ");
-			scanf("%d", &msg_buffer.game_id);
+			msg_buffer.token = player_token;
+			msg_buffer.game_token = game_token;
+			msg_buffer.game_id = game_id;
 
 			printf("Enter number of played cards ");
 			scanf("%d", &msg_buffer.message.move.played_cards_count);
@@ -133,6 +130,11 @@ int main(int argc, char* argv[]) {
 				printf("Enter card %d value and color ", i);
 				scanf("%d %d", &msg_buffer.message.move.played_cards[i].value, &msg_buffer.message.move.played_cards[i].color);
 			}
+
+			printf("Enter color request ");
+			scanf("%d", &msg_buffer.message.move.color_request);
+			printf("Enter value request ");
+			scanf("%d", &msg_buffer.message.move.value_request);
 
 
 		}

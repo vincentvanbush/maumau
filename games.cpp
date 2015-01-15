@@ -237,6 +237,7 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 		}
 		else if (cards_to_pick != 0) {
 			picked = cards_to_pick;
+			game -> cards_to_pick = 0;
 		}
 		else if (turns_to_miss != 0) {
 			player -> turns_to_miss = turns_to_miss;

@@ -76,7 +76,7 @@ void deal_cards (struct game_info* game) {
 }
 
 struct card top_card (struct game_info* game) {
-	return game -> deck.front();
+	return game -> played_cards.front();
 }
 
 bool validate_move (struct game_msg* move_msg, struct game_info* game) {
@@ -86,8 +86,7 @@ bool validate_move (struct game_msg* move_msg, struct game_info* game) {
 		return false;
 	}
 
-	std::deque <struct card>& deck = game -> deck;
-	struct card top = deck.front(); // top_card (game);
+	struct card top = top_card (game);
 	struct move_msg &move = move_msg -> message.move;
 	std::vector <struct card> played_cards (move.played_cards, move.played_cards + move.played_cards_count);
 	int player_token = move_msg -> token;
@@ -120,6 +119,26 @@ bool validate_move (struct game_msg* move_msg, struct game_info* game) {
 	// Check if first card played has the same color or value as top card...
 	// or if first card conforms to the request
 	if (played_cards.size() > 0) {
+
+		// Check if the player actually does have the cards he sends
+
+		struct player_info *player = game -> players[game -> turn];
+		std::vector <struct card> &hand = player -> cards;
+		
+		for (int i = 0; i < played_cards.size(); i++) {
+			bool card_eq = false;
+			for (int j = 0; j < hand.size(); j++) {
+				if (card_equals (hand[j], played_cards[i])) {
+					card_eq = true;
+					break;
+				}
+			}
+			if (!card_eq) {
+				puts ("Player tries to send card he doesn't have");
+				return false;
+			}
+		}
+
 		// No request: check top card
 		if (game -> color_request == 0 && game -> value_request == 0 && game -> turns_to_miss == 0) {
 			if (played_cards[0].color != top.color && played_cards[0].value != top.value) {
@@ -215,9 +234,9 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 		game -> cards_to_pick = 0;
 	} else game -> cards_to_pick = move -> cards_for_next;
 	// Transfer move's played cards to the front of the structure in game
-	std::deque <struct card> &cards_in_game = game -> played_cards;
+	std::deque <struct card> *cards_in_game = &game -> played_cards;
 	for (int i = 0; i < move -> played_cards_count; i++) {
-		cards_in_game.push_front(move -> played_cards[i]);
+		cards_in_game -> push_front(move -> played_cards[i]);
 	}
 	std::vector <struct card> &player_cards = player -> cards;
 	std::deque <struct card> move_cards(move -> played_cards, move -> played_cards + move -> played_cards_count);

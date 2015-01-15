@@ -348,6 +348,7 @@ void *client_loop(void *arg) {
 					// all players are ready, so deal the cards and start the game
 					pthread_mutex_lock(&games_lock);
 					deal_cards (game);
+					game -> started = true;
 					pthread_mutex_unlock(&games_lock);
 
 					// send 'Start game' to all players in game
@@ -361,7 +362,7 @@ void *client_loop(void *arg) {
 						struct start_game_msg* start_game = &start_game_msg.message.start_game;
 						for (int j = 0; j < player -> cards.size(); j++)
 							start_game -> player_cards[j] = player -> cards[j];
-						start_game -> first_card_in_stack = game -> deck.front();
+						start_game -> first_card_in_stack = game -> played_cards.front();
 						
 						start_game -> turn = 0;
 
@@ -468,7 +469,37 @@ int main(int argc, char* argv[]) {
     	exit (EXIT_FAILURE);
 	}
 
-	printf ("Press ENTER to shutdown server \n");
+	while (true) {
+		int id;
+		printf ("Enter game id to show state ");
+		scanf ("%d", &id);
+
+		printf ("Game %d\n", id);
+		for (int i = 0; i < games[id] -> players.size(); i++) {
+			printf("%d: %s ", i, games[id] -> players[i] -> player_name);
+			printf("Cards: ");
+			std::vector <struct card> &cards = games[id] -> players[i] -> cards;
+			for (int j = 0; j < cards.size(); j++) {
+				printf("%d %d\t", cards[j].value, cards[j].color);
+			}
+			printf("\n");
+		}
+
+		printf("Cards on table:\n");
+		for (int i = 0; i < games[id] -> played_cards.size(); i++) {
+			printf("%d %d, ", games[id] -> played_cards[i].value, games[id] -> played_cards[i].color);
+		}
+
+		printf("Deck:\n");
+		for (int i = 0; i < games[id] -> deck.size(); i++) {
+			printf("%d %d, ", games[id] -> deck[i].value, games[id] -> deck[i].color);
+		}
+
+
+		printf("\n\n");
+	}
+	
+	printf ("Press ENTER to exit server\n");
 	getc (stdin);
   
 	exit (EXIT_SUCCESS);

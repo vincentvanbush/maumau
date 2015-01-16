@@ -28,6 +28,7 @@ struct game_info {
 	short value_request;
 	short turns_to_miss;
 	short cards_to_pick;
+	short request_ttl;
 	bool started;
 };
 
@@ -48,5 +49,9 @@ bool is_finished (struct game_info*);
 std::deque <struct card> pick_n_cards (struct game_info*, short, short);
 
 std::deque <struct card> update_game_state (struct move_msg*, struct game_info*);
+
+short finished_players (struct game_info*);
+
+short players_still_in_game (struct game_info*);
 
 #endif

@@ -78,6 +78,32 @@ void TcpClient::readMessage()
 
 }
 
+void TcpClient::updateHandAfterMove(short playedCardsCount, card* cards)
+{
+    card c;
+    if(playedCardsCount > 0) {
+        for(int i=0; i<playedCardsCount; i++) {
+            for(std::vector<card>::iterator it = this->cardsInHand.begin(); it != this->cardsInHand.end(); ++it) {
+                if(it->color == cards[i].color && it->value == cards[i].value) {
+
+                    c.color = it->color;
+                    c.value = it->value;
+                    this->cardsInStack.push_back(c);
+                    this->cardsInHand.erase(it);
+                    break;
+                }
+            }
+        }
+
+        this->firstCardInStack.color = c.color;
+        this->firstCardInStack.value = c.value;
+        this->numberOfCardsInHand = this->cardsInHand.size();
+    }
+}
+
+
+
+// methods sending communicates to server
 void TcpClient::sendJoinGameMessage(std::string playerName, int gameID)
 {
     struct game_msg gameMessage;
@@ -93,7 +119,6 @@ void TcpClient::sendJoinGameMessage(std::string playerName, int gameID)
 
     this->tcpSocket->write((const char*) &gameMessage, (qint64) sizeof(gameMessage));
 }
-
 
 void TcpClient::sendRequestGamesMessage()
 {
@@ -166,7 +191,7 @@ void TcpClient::sendMoveMessage(short playedCardsCount, card* playedCards, short
 }
 
 
-
+// methods handling communicates from server
 void TcpClient::gameListSignalHandle(struct game_list_msg gameList)
 {
     for(int i=0; i<50; i++) {
@@ -316,24 +341,40 @@ void TcpClient::moveSignalHandle(struct move_msg move)
         this->playedCards[i] = move.played_cards[i];
         this->cardsInStack.push_back(move.played_cards[i]);
     }
-    this->firstCardInStack = this->playedCards[this->playedCardsCount-1];
+
+    card c;
+    c.color = this->cardsInStack.end()->color;
+    c.value = this->cardsInStack.end()->value;
+    //this->firstCardInStack = this->playedCards[this->playedCardsCount-1];
+    this->firstCardInStack.color = c.color;
+    this->firstCardInStack.value = c.value;
+
 
     this->colorRequest = move.color_request;
     this->valueRequest = move.value_request;
 
 }
 
-//void TcpClient::nextTurnSignalHandle(struct next_turn_msg nextTurn)
-//{
-//    if(this->slotNumber == nextTurn.turn) {
-//        this->numberOfCardsInHand += nextTurn.cards_picked_up;
-//        for(int i=0; i<nextTurn.cards_picked_up; i++) {
-//            this->cardsInHand.push_back(nextTurn.cards[i]);
-//        }
+void TcpClient::nextTurnSignalHandle(struct next_turn_msg nextTurn)
+{
+    this->turn = nextTurn.turn;
+    this->cards_for_next = nextTurn.cards_for_next;
+    this->turns_for_next = nextTurn.turns_for_next;
+}
 
-//    }
-//}
+void TcpClient::pickCardsSignalHandle(struct pick_cards_msg pickCards)
+{
+    this->slot = pickCards.slot;
+    this->count = pickCards.count;
+    if(this->slot == this->slotNumber) {
+        for(int i=0; i<this->count; i++) {
+            this->cardsInHand.push_back(pickCards.cards[i]);
+        }
+    }
+}
 
+
+// methods establishing connection with server
 void TcpClient::socketError(QAbstractSocket::SocketError err)
 {
     qDebug() << "Problem with socket";

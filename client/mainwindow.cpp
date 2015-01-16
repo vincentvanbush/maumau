@@ -18,12 +18,18 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->sendMoveButton, SIGNAL(clicked()), this, SLOT(onSendMoveButtonClicked()));
 
     // reacting on messages from server
-    connect(tcpClient, SIGNAL(joinOKSignal()), this, SLOT(onJoinOKMessageRecv()));
-    connect(tcpClient, SIGNAL(gameListSignal()), this, SLOT(onGameListMessageRecv()));
     connect(tcpClient, SIGNAL(cannotJoinSignal()), this, SLOT(onCannotJoinMessageRecv()));
-    connect(tcpClient, SIGNAL(starGameSignal()), this, SLOT(onStartGameMessageRecv()));
+    connect(tcpClient, SIGNAL(cannotReadySignal()), this, SLOT(onCannotReadyMessageRecv()));
+    connect(tcpClient, SIGNAL(cannotLeaveSignal()), this, SLOT(onCannotLeaveMessageRecv()));
+    connect(tcpClient, SIGNAL(joinOKSignal()), this, SLOT(onJoinOKMessageRecv()));
     connect(tcpClient, SIGNAL(playerJoinedSignal()), this, SLOT(onPlayerJoinedMessageRecv()));
+    connect(tcpClient, SIGNAL(starGameSignal()), this, SLOT(onStartGameMessageRecv()));
+    connect(tcpClient, SIGNAL(nextTurnSignal()), this, SLOT(onNextTurnMessageRecv()));
+    connect(tcpClient, SIGNAL(pickCardsSignal()), this, SLOT(onPickCardsMessageRecv()));
+    connect(tcpClient, SIGNAL(invalidMoveSignal()), this, SLOT(onInvalidMoveMessageRecv()));
+    connect(tcpClient, SIGNAL(gameEndSignal()), this, SLOT(onGameEndMessageRecv()));
     connect(tcpClient, SIGNAL(playerLeftSignal()), this, SLOT(onPlayerLeftMessageRecv()));
+    connect(tcpClient, SIGNAL(gameListSignal()), this, SLOT(onGameListMessageRecv()));
     connect(tcpClient, SIGNAL(moveSignal()), this, SLOT(onMoveMessageRecv()));
 }
 
@@ -32,6 +38,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+// methods handling signals from interface e.g. clicking buttons
 void MainWindow::onRequestGamesButtonClicked()
 {
     ui->plainTextEdit->appendPlainText("---Sending request for games");
@@ -47,6 +54,7 @@ void MainWindow::onJoinGameButtonClicked()
     int gameID = id.toInt();
     tcpClient->sendJoinGameMessage(playerName, gameID);
 }
+
 void MainWindow::onReadyButtonClicked()
 {
     tcpClient->sendReadyMessage();
@@ -57,7 +65,49 @@ void MainWindow::onLeaveGameButtonClicked()
     tcpClient->sendLeaveGameMessage();
 }
 
-//
+void MainWindow::onSendMoveButtonClicked()
+{
+    short playedCardsCount = 0;
+    card playedCards[4];
+    for(int i=0; i<4; i++) {
+        playedCards[i].color = 0;
+        playedCards[i].value = 0;
+    }
+    short colorRequest = 0;
+    short valueRequest = 0;
+
+    std::vector<card>* cards = readCards();
+    playedCardsCount = (*cards).size();
+
+    int k = 0;
+    for(std::vector<card>::iterator it = (*cards).begin(); it != (*cards).end(); ++it) {
+        playedCards[k].color = it->color;
+        playedCards[k].value = it->value;
+    }
+
+    short request = readRequest();
+    if(request != 0) {
+        if(request >= 30 && request <= 33) {
+            colorRequest = request;
+        }
+        else {
+            valueRequest = request;
+        }
+    }
+
+    // VALIDATION
+
+    tcpClient->sendMoveMessage(playedCardsCount, playedCards, colorRequest, valueRequest);
+
+    tcpClient->updateHandAfterMove(playedCardsCount, playedCards);
+    // update cards in hand in interface
+    this->onStartGameMessageRecv();
+
+
+    //this->readCards();
+}
+
+
 // Interface reactions on received message from server.
 
 void MainWindow::onCannotJoinMessageRecv()
@@ -129,11 +179,19 @@ void MainWindow::onStartGameMessageRecv()
         short figure = card.value;
         ui->handTextEdit->appendPlainText("\t" + QString::fromStdString(this->convertCardValue(color)) + "\t" + QString::fromStdString(this->convertCardValue(figure)));
     }
+    //int k = tcpClient->cardsInStack.back().color;
+    //tcpClient->cardsInStack.p
+    //qDebug() << QString::number(tcpClient->cardsInStack.back().color);
     ui->handTextEdit->appendPlainText("Card in top of stack:");
-    ui->handTextEdit->appendPlainText("\t" + QString::fromStdString(this->convertCardValue(tcpClient->firstCardInStack.color)) + "\t" + QString::fromStdString(this->convertCardValue(tcpClient->firstCardInStack.value)));
+    ui->handTextEdit->appendPlainText("\t" + QString::fromStdString(this->convertCardValue(/*tcpClient->firstCardInStack.color*/tcpClient->cardsInStack.back().color)) + "\t" + QString::fromStdString(this->convertCardValue(/*tcpClient->firstCardInStack.value*/tcpClient->cardsInStack.back().value)));
 }
 
 void MainWindow::onNextTurnMessageRecv()
+{
+
+}
+
+void MainWindow::onPickCardsMessageRecv()
 {
 
 }
@@ -165,6 +223,7 @@ void MainWindow::onPlayerLeftMessageRecv()
         ui->plainTextEdit->appendPlainText("There are no othre players in game");
     }
 }
+
 void MainWindow::onGameListMessageRecv()
 {
     QString gameId;
@@ -209,8 +268,14 @@ void MainWindow::onMoveMessageRecv()
         ui->moveLogTextEdit->appendPlainText("Requested value: " + QString::fromStdString(this->convertCardValue(tcpClient->valueRequest)));
     else
         ui->moveLogTextEdit->appendPlainText("No requests about value");
+
+    // tomporaryly call to update card in stock
+    this->onStartGameMessageRecv();
 }
 
+
+
+// Helpers
 std::string MainWindow::convertCardValue(int value)
 {
     switch(value) {
@@ -266,36 +331,40 @@ std::vector<card>* MainWindow::readCards()
 {
     std::vector<card>* cards = new std::vector<card>();
     QString c = ui->playedCardsEdit->text();
-    QStringList listOfCards = c.split(" ");
-    qDebug() << "Ilosc kart: " + QString::number(listOfCards.length());
-    foreach (QString cardString, listOfCards) {
-        card cardTemp;
-        short color;
-        short value;
-        if(cardString.startsWith("H")) color = 30;
-        if(cardString.startsWith("T")) color = 31;
-        if(cardString.startsWith("C")) color = 32;
-        if(cardString.startsWith("P")) color = 33;
+
+    if(!c.isEmpty()) {
+        QStringList listOfCards = c.split(" ");
+        qDebug() << "Ilosc kart: " + QString::number(listOfCards.length());
+        foreach (QString cardString, listOfCards) {
+            card cardTemp;
+            short color;
+            short value;
+            if(cardString.startsWith("H")) color = 30;
+            if(cardString.startsWith("T")) color = 31;
+            if(cardString.startsWith("C")) color = 32;
+            if(cardString.startsWith("P")) color = 33;
 
 
-        if(cardString.contains("K")) value = 20;
-        if(cardString.contains("Q")) value = 21;
-        if(cardString.contains("A")) value = 22;
-        if(cardString.contains("J")) value = 23;
-        if(cardString.contains("2")) value = 2;
-        if(cardString.contains("3")) value = 3;
-        if(cardString.contains("4")) value = 4;
-        if(cardString.contains("5")) value = 5;
-        if(cardString.contains("6")) value = 6;
-        if(cardString.contains("7")) value = 7;
-        if(cardString.contains("8")) value = 8;
-        if(cardString.contains("9")) value = 9;
-        if(cardString.contains("10")) value = 10;
+            if(cardString.contains("K")) value = 20;
+            if(cardString.contains("Q")) value = 21;
+            if(cardString.contains("A")) value = 22;
+            if(cardString.contains("J")) value = 23;
+            if(cardString.contains("2")) value = 2;
+            if(cardString.contains("3")) value = 3;
+            if(cardString.contains("4")) value = 4;
+            if(cardString.contains("5")) value = 5;
+            if(cardString.contains("6")) value = 6;
+            if(cardString.contains("7")) value = 7;
+            if(cardString.contains("8")) value = 8;
+            if(cardString.contains("9")) value = 9;
+            if(cardString.contains("10")) value = 10;
 
-        cardTemp.color = color;
-        cardTemp.value = value;
-        (*cards).push_back(cardTemp);
+            cardTemp.color = color;
+            cardTemp.value = value;
+            (*cards).push_back(cardTemp);
+        }
     }
+    qDebug() << "Ilosc kart 0.";
 
 
 
@@ -308,46 +377,6 @@ std::vector<card>* MainWindow::readCards()
     return cards;
 
 }
-
-void MainWindow::onSendMoveButtonClicked()
-{
-    short playedCardsCount = 0;
-    card playedCards[4];
-    for(int i=0; i<4; i++) {
-        playedCards[i].color = 0;
-        playedCards[i].value = 0;
-    }
-    short colorRequest = 0;
-    short valueRequest = 0;
-
-    std::vector<card>* cards = readCards();
-    playedCardsCount = (*cards).size();
-
-    int k = 0;
-    for(std::vector<card>::iterator it = (*cards).begin(); it != (*cards).end(); ++it) {
-        playedCards[k].color = it->color;
-        playedCards[k].value = it->value;
-    }
-
-    short request = readRequest();
-    if(request != 0) {
-        if(request >= 30 && request <= 33) {
-            colorRequest = request;
-        }
-        else {
-            valueRequest = request;
-        }
-    }
-
-    // VALIDATION
-
-    tcpClient->sendMoveMessage(playedCardsCount, playedCards, colorRequest, valueRequest);
-
-
-
-    //this->readCards();
-}
-
 
 
 

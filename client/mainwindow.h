@@ -36,6 +36,7 @@ public slots:
     void onPlayerJoinedMessageRecv();
     void onStartGameMessageRecv();
     void onNextTurnMessageRecv();
+    void onPickCardsMessageRecv();
     void onInvalidMoveMessageRecv();
     void onGameEndMessageRecv();
     void onPlayerLeftMessageRecv();

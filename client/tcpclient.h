@@ -27,17 +27,22 @@ public:
     void sendLeaveGameMessage();
     void sendMoveMessage(short, card*, short, short);
 
-    void gameListSignalHandle(struct game_list_msg);
+    void updateHandAfterMove(short, card*);
+
+
+    void cannotJoinSignalHandle(struct cannot_join_msg);
+    void cannotReadySignalHandle(struct cannot_ready_msg);
+    void cannotLeaveSignalHandle(struct cannot_leave_msg);
     void joinOKSignalHandle(struct join_ok_msg);
-    void startGameSignalHandle(struct start_game_msg);
     void playerJoinedSignalHandle(struct player_joined_msg);
+    void startGameSignalHandle(struct start_game_msg);
+    void nextTurnSignalHandle(struct next_turn_msg);
+    void pickCardsSignalHandle(struct pick_cards_msg);
+    //invalid move
     void gameEndSignalHandle(struct game_end_msg);
     void playerLeftSignalHandle(struct player_left_msg);
-    void cannotJoinSignalHandle(struct cannot_join_msg);
-    void cannotLeaveSignalHandle(struct cannot_leave_msg);
-    void cannotReadySignalHandle(struct cannot_ready_msg);
+    void gameListSignalHandle(struct game_list_msg);
     void moveSignalHandle(struct move_msg);
-    void nextTurnSignalHandle(struct next_turn_msg);
 
     // information about existing games
     bool gameExists[50];
@@ -78,7 +83,13 @@ public:
     short colorRequest;
     short valueRequest;
 
+    short turn;
+    short turns_for_next;
     short cards_for_next;
+
+    short slot;
+    short count;
+    struct card cards[30];
 
 
 //private slots:
@@ -94,11 +105,13 @@ signals:
     void playerJoinedSignal();
     void starGameSignal();
     void nextTurnSignal();
+    void pickCardsSignal();
     void invalidMoveSignal();
     void gameEndSignal();
     void playerLeftSignal();
     void gameListSignal();
     void moveSignal();
+
 
 
 

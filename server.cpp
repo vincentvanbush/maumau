@@ -153,7 +153,8 @@ void *client_loop(void *arg) {
 				
 				std::deque <struct card> cards_picked_up;
 				cards_picked_up = update_game_state (&move, games[game_id]);
-				
+				short sender_turn = game -> turn;
+
 				// Increment the turn modulo 4. Repeat if the selected player has finished
 				do
 					(++game -> turn) %= game -> players.size();
@@ -168,24 +169,38 @@ void *client_loop(void *arg) {
 					else printf("Sent MOVE to client %s\n", game -> players[i] -> player_name);
 				}
 
-				// Send NEXT_TURN to all players, augmented with cards picked up for the sender
+				// If sender has to pick up any cards, broadcast PICK_CARDS to all players.
+				// For the sender only, augment the message with the cards he picks.
+				if (cards_picked_up.size() > 0) for (int i = 0; i < game -> players.size(); i++) {
+					struct game_msg pick_cards_msg;
+					pick_cards_msg.msg_type = PICK_CARDS;
+
+					pick_cards_msg.message.pick_cards.slot = sender_turn;
+
+					if (player_token == game -> players[sender_turn] -> token) {
+						for (int i = 0; i < cards_picked_up.size(); i++)
+							pick_cards_msg.message.pick_cards.cards[i] = cards_picked_up[i];
+					}
+
+					if (send (game -> players[i] -> socket, &pick_cards_msg, sizeof pick_cards_msg, 0) < 0) {
+						perror ("Error sending PICK_CARDS to client socket");
+						exit (EXIT_FAILURE);
+					}
+					else printf("Sent PICK CARDS to client %s\n", game -> players[i] -> player_name);
+				}
+
+				// Send NEXT_TURN to all players
 				for (int i = 0; i < game -> players.size(); i++) {
 					struct game_msg next_turn_msg;
 					next_turn_msg.msg_type = NEXT_TURN;
 					struct next_turn_msg* next_turn = &next_turn_msg.message.next_turn;
 					next_turn -> turn = game -> turn;
-					//strcpy(next_turn -> player_name, game -> players[game -> turn] -> player_name);
-					next_turn -> cards_picked_up = cards_picked_up.size();
-					
-					if (player_token == game -> players[(game -> turn - 1) % game -> players.size()] -> token)
-						for (int i = 0; i < cards_picked_up.size(); i++)
-							next_turn -> cards[i] = cards_picked_up[i];
 
-					if (send (game -> players[i] -> socket, &msg_buffer, sizeof msg_buffer, 0) < 0) {
-						perror ("Error sending MOVE to client socket");
+					if (send (game -> players[i] -> socket, &next_turn_msg, sizeof next_turn_msg, 0) < 0) {
+						perror ("Error sending NEXT_TURN to client socket");
 						exit (EXIT_FAILURE);
 					}
-					else printf("Sent MOVE to client %s\n", game -> players[i] -> player_name);
+					else printf("Sent NEXT_TURN to client %s\n", game -> players[i] -> player_name);
 				}
 
 				bool game_end = is_finished (game);
@@ -488,6 +503,10 @@ int main(int argc, char* argv[]) {
 			printf("%d %d, ", games[id] -> deck[i].value, games[id] -> deck[i].color);
 		}
 
+		printf("Color request: %d\n", games[id] -> color_request);
+		printf("Value request: %d\n", games[id] -> value_request);
+		printf("Turns to miss: %d\n", games[id] -> turns_to_miss);
+		printf("Cards to pick: %d\n", games[id] -> cards_to_pick);
 
 		printf("\n\n");
 	}

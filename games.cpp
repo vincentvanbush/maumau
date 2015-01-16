@@ -12,6 +12,10 @@ struct game_info* new_game(int id) {
 	ret->game_token = rand();
 	ret->game_id = id;
 	ret->turn = 0;
+	ret->color_request = 0;
+	ret->value_request = 0;
+	ret->turns_to_miss = 0;
+	ret->cards_to_pick = 0;
 
 	// shuffle the deck
 	struct card card_array[52] = { 
@@ -217,37 +221,57 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 	short player_turn = game -> turn;
 	struct player_info* player = game -> players[player_turn];
 
-	// If the player has to miss a turn, decrement the counter and don't change anything
-	if (player -> turns_to_miss > 0) {
-		player -> turns_to_miss--;
-		return picked_cards;
-	}
+	// If no card played
+	if (move -> played_cards_count == 0) {
+		short cards_to_pick = game -> cards_to_pick;
+		short turns_to_miss = game -> turns_to_miss;
+		short picked;
 
-	// if game turns to miss > 0 and no card is played, the player misses n turns
-	if (game -> turns_to_miss > 0 && move -> played_cards_count == 0) {
-		player -> turns_to_miss = game -> turns_to_miss;
-		game -> turns_to_miss = 0;
-	}
+		if (player -> turns_to_miss > 0) {
+			player -> turns_to_miss--;
+			return picked_cards;
+		}
 
-	else { // if game turns to miss > 0 and 4's are played, add the number of played cards
-		game -> turns_to_miss = move -> played_cards_count;
-	}
-
-	// Pick up n cards if move says so!
-	short n = game -> cards_to_pick;
-	if (n > 0) { // if has to pick up cards
-		if (move -> played_cards_count == 0) {
-			picked_cards = pick_n_cards (game, n, player_turn);
+		if (cards_to_pick == 0 && turns_to_miss == 0) {
+			picked = 1;
+		}
+		else if (cards_to_pick != 0) {
+			picked = cards_to_pick;
 			game -> cards_to_pick = 0;
 		}
-		else if (move -> played_cards[0].value == 2) {
-			game -> cards_to_pick += 2 * move -> played_cards_count;
+		else if (turns_to_miss != 0) {
+			player -> turns_to_miss = turns_to_miss;
+			game -> turns_to_miss = 0;
 		}
-		else if (move -> played_cards[0].value == 3) {
-			game -> cards_to_pick += 3 * move -> played_cards_count;
+		picked_cards = pick_n_cards (game, picked, player_turn);
+	}
+	// If one or more cards played
+	else {
+		short value = move -> played_cards[0].value;
+		short first_color = move -> played_cards[0].color;
+		short card_count = move -> played_cards_count;
+		if (value == KING) { // eat 5 cards
+			if (first_color == HEART) {
+				game -> cards_to_pick += 5;
+			}
+			else if (first_color == PIKE) {
+				game -> cards_to_pick += 5;
+			}
 		}
-		else if (move -> played_cards[0].value == KING) {
-			game -> cards_to_pick += 5;
+		else if (value == JACK) { // request value
+			game -> value_request = move -> value_request;
+		}
+		else if (value == ACE) { // request color
+			game -> color_request = move -> color_request;
+		}
+		else if (value == 4) { // miss a turn
+			game -> turns_to_miss += card_count;
+		}
+		else if (value == 3 || value == 2) { // eat 3 or 2 cards
+			game -> cards_to_pick += value * card_count;
+		}
+		else { // normal card
+
 		}
 	}
 
@@ -266,9 +290,8 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 			}
 		}
 	}
-	// Update color/value requests and turns to sit
-	game -> color_request = move -> color_request;
-	game -> value_request = move -> value_request;
+
+	
 	if (player -> cards.size() == 0) {
 		player -> finished = true;
 	}
@@ -301,12 +324,12 @@ std::deque <struct card> pick_n_cards (struct game_info* game, short n, short pl
 }
 
 bool is_finished (struct game_info* game) {
-	bool game_end = true;
+	short finished_players = 0;
 	for (int i = 0; i < game -> players.size(); i++) {
 		struct player_info* player = game -> players[i];
-		if (!player -> finished) {
-			game_end = false;
-			break;
-		}
+		if (!player -> finished) ++finished_players;
 	}
+	if (finished_players == game -> players.size() - 1) 
+		return true;
+	return false;
 }

@@ -47,7 +47,7 @@ void *client_loop(void *arg) {
 			if (games[msg.game_id] == nullptr) {
 				// Game does not exist yet, we have to create it
 				printf("--- Game %d does not exist yet\n", msg.game_id);
-				if (games_num > MAX_GAME_NUM - 1 || msg.game_id > 49) {
+				if (games_num > MAX_GAME_NUM - 1 || msg.game_id < 0) {
 					struct game_msg error_msg;
 					error_msg.msg_type = CANNOT_JOIN;
 					if (send (rcv_sck, &error_msg, sizeof error_msg, 0) < 0) {
@@ -152,13 +152,8 @@ void *client_loop(void *arg) {
 				// Update game state
 				
 				std::deque <struct card> cards_picked_up;
-				cards_picked_up = update_game_state (&move, games[game_id]);
 				short sender_turn = game -> turn;
-
-				// Increment the turn modulo 4. Repeat if the selected player has finished
-				do
-					(++game -> turn) %= game -> players.size();
-				while (game -> players[game -> turn] -> finished);
+				cards_picked_up = update_game_state (&move, games[game_id]);
 
 				// Broadcast move to others
 				for (int i = 0; i < game -> players.size() && game -> players[i] -> socket != rcv_sck; i++) {
@@ -502,11 +497,15 @@ int main(int argc, char* argv[]) {
 		for (int i = 0; i < games[id] -> deck.size(); i++) {
 			printf("%d %d, ", games[id] -> deck[i].value, games[id] -> deck[i].color);
 		}
+		printf("\n\n");
 
+		printf("Turn: %d\n", games[id] -> turn);
+		printf("Request TTL: %d\n", games[id] -> request_ttl);
 		printf("Color request: %d\n", games[id] -> color_request);
 		printf("Value request: %d\n", games[id] -> value_request);
 		printf("Turns to miss: %d\n", games[id] -> turns_to_miss);
 		printf("Cards to pick: %d\n", games[id] -> cards_to_pick);
+		printf("Players still in game: %d, finished players: %d\n", players_still_in_game(games[id]), finished_players(games[id]));
 
 		printf("\n\n");
 	}

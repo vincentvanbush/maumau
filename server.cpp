@@ -95,12 +95,14 @@ void *client_loop(void *arg) {
 			player_joined_msg.msg_type = PLAYER_JOINED;
 			strcpy(player_joined_msg.message.player_joined.player_name, msg.player_name);
 			player_joined_msg.message.player_joined.slot_number = game -> players.size() - 1;
-			for (int i = 0; i < game -> players.size() && game -> players[i] -> socket != rcv_sck; i++) {
-				if (send (game -> players[i] -> socket, &player_joined_msg, sizeof player_joined_msg, 0) < 0) {
-					perror ("Error sending PLAYER_JOINED to client socket");
-					exit (EXIT_FAILURE);
+			for (int i = 0; i < game -> players.size(); i++) {
+				if (game -> players[i] -> socket != rcv_sck) {
+					if (send (game -> players[i] -> socket, &player_joined_msg, sizeof player_joined_msg, 0) < 0) {
+						perror ("Error sending PLAYER_JOINED to client socket");
+						exit (EXIT_FAILURE);
+					}
+					else printf("Sent PLAYER_JOINED to client %s\n", game -> players[i] -> player_name);
 				}
-				else printf("Sent PLAYER_JOINED to client %s\n", game -> players[i] -> player_name);
 			}
 
 
@@ -156,12 +158,14 @@ void *client_loop(void *arg) {
 				cards_picked_up = update_game_state (&move, games[game_id]);
 
 				// Broadcast move to others
-				for (int i = 0; i < game -> players.size() && game -> players[i] -> socket != rcv_sck; i++) {
-					if (send (game -> players[i] -> socket, &msg_buffer, sizeof msg_buffer, 0) < 0) {
-						perror ("Error sending MOVE to client socket");
-						exit (EXIT_FAILURE);
+				for (int i = 0; i < game -> players.size(); i++) {
+					if (game -> players[i] -> socket != rcv_sck) {
+						if (send (game -> players[i] -> socket, &msg_buffer, sizeof msg_buffer, 0) < 0) {
+							perror ("Error sending MOVE to client socket");
+							exit (EXIT_FAILURE);
+						}
+						else printf("Sent MOVE to client %s\n", game -> players[i] -> player_name);
 					}
-					else printf("Sent MOVE to client %s\n", game -> players[i] -> player_name);
 				}
 
 				// If sender has to pick up any cards, broadcast PICK_CARDS to all players.

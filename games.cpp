@@ -16,6 +16,7 @@ struct game_info* new_game(int id) {
 	ret->value_request = 0;
 	ret->turns_to_miss = 0;
 	ret->cards_to_pick = 0;
+	ret->request_ttl = 0;
 
 	// shuffle the deck
 	struct card card_array[52] = { 
@@ -221,6 +222,12 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 	short player_turn = game -> turn;
 	struct player_info* player = game -> players[player_turn];
 
+	if (game -> request_ttl > 0) game -> request_ttl -= 1;
+	else {
+		game -> value_request = 0;
+		game -> color_request = 0;
+	}
+
 	// If no card played
 	if (move -> played_cards_count == 0) {
 		short cards_to_pick = game -> cards_to_pick;
@@ -260,9 +267,13 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 		}
 		else if (value == JACK) { // request value
 			game -> value_request = move -> value_request;
+			if (move -> value_request != 0)
+				game -> request_ttl = players_still_in_game (game);
 		}
 		else if (value == ACE) { // request color
 			game -> color_request = move -> color_request;
+			if (move -> value_request != 0)
+				game -> request_ttl = players_still_in_game (game);
 		}
 		else if (value == 4) { // miss a turn
 			game -> turns_to_miss += card_count;
@@ -274,6 +285,16 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 
 		}
 	}
+
+
+	// Increment the turn modulo 4. Repeat if the selected player has finished
+	do
+		if (move -> played_cards_count > 0 && move -> played_cards[0].value == KING
+			&& move -> played_cards[0].color == PIKE)
+			(--game -> turn) %= game -> players.size();
+		else
+			(++game -> turn) %= game -> players.size();
+	while (game -> players[game -> turn] -> finished);
 
 	// Transfer move's played cards to the front of the structure in game
 	std::deque <struct card> *cards_in_game = &game -> played_cards;
@@ -295,6 +316,8 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 	if (player -> cards.size() == 0) {
 		player -> finished = true;
 	}
+
+
 	return picked_cards;
 }
 
@@ -324,12 +347,21 @@ std::deque <struct card> pick_n_cards (struct game_info* game, short n, short pl
 }
 
 bool is_finished (struct game_info* game) {
-	short finished_players = 0;
-	for (int i = 0; i < game -> players.size(); i++) {
-		struct player_info* player = game -> players[i];
-		if (!player -> finished) ++finished_players;
-	}
-	if (finished_players == game -> players.size() - 1) 
+	short ret = finished_players (game);
+	if (ret == game -> players.size() - 1) 
 		return true;
 	return false;
+}
+
+short finished_players (struct game_info *game) {
+	short ret = 0;
+	for (int i = 0; i < game -> players.size(); i++) {
+		struct player_info* player = game -> players[i];
+		if (!player -> finished) ++ret;
+	}
+	return game -> players.size() - ret;
+}
+
+short players_still_in_game (struct game_info *game) {
+	return game -> players.size() - finished_players (game);
 }

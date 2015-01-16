@@ -84,8 +84,8 @@ public:
     short valueRequest;
 
     short turn;
-    short turns_for_next;
-    short cards_for_next;
+    short turnsForNext;
+    short cardsForNext;
 
     short slot;
     short count;

@@ -157,6 +157,7 @@ void MainWindow::onJoinOKMessageRecv()
         }
     }
 
+    ui->nameEdit->setText(QString::fromUtf8(tcpClient->playerName));
 
 
 }
@@ -188,11 +189,23 @@ void MainWindow::onStartGameMessageRecv()
 
 void MainWindow::onNextTurnMessageRecv()
 {
+    ui->moveLogTextEdit->appendPlainText("Player " + QString::number(tcpClient->turn) + " moves");
+    ui->moveLogTextEdit->appendPlainText(QString::number(tcpClient->cardsForNext) + " cards to take");
+    ui->moveLogTextEdit->appendPlainText(QString::number(tcpClient->turnsForNext) + " turns to stop");
 
+    ui->playerMoveEdit->setText(QString::fromStdString(*(tcpClient->playersAtSlots[tcpClient->turn])));
 }
 
 void MainWindow::onPickCardsMessageRecv()
 {
+    if(tcpClient->slot == tcpClient->slotNumber) {
+        ui->moveLogTextEdit->appendPlainText("You are taking " + QString::number(tcpClient->count) + " cards");
+        // updating hand
+        this->onStartGameMessageRecv();
+    }
+    else {
+        ui->moveLogTextEdit->appendPlainText("Player at slot " + QString::number(tcpClient->slot) + " takes " + QString::number(tcpClient->count) + " cards");
+    }
 
 }
 

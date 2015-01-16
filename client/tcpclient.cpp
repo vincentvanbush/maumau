@@ -9,6 +9,10 @@ TcpClient::TcpClient()
     for(int i=0; i<4; i++) {
         this->playersAtSlots[i] = nullptr;
     }
+    this->turn = 0;
+    this->turnsForNext = 0;
+    this->cardsForNext = 0;
+
 
     this->tcpSocket = new QTcpSocket(this);
     connect(tcpSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(socketError(QAbstractSocket::SocketError)));
@@ -53,9 +57,12 @@ void TcpClient::readMessage()
         this->starGameSignal();
         break;
     case NEXT_TURN:
-//        this->nextTurnSignalHandle(gameMessage.message.next_turn);
-//        this->nextTurnSignal();
+        this->nextTurnSignalHandle(gameMessage.message.next_turn);
+        this->nextTurnSignal();
         break;
+    case PICK_CARDS:
+        this->pickCardsSignalHandle(gameMessage.message.pick_cards);
+        this->pickCardsSignal();
     case INVALID_MOVE:
         this->invalidMoveSignal();
         break;
@@ -358,8 +365,8 @@ void TcpClient::moveSignalHandle(struct move_msg move)
 void TcpClient::nextTurnSignalHandle(struct next_turn_msg nextTurn)
 {
     this->turn = nextTurn.turn;
-    this->cards_for_next = nextTurn.cards_for_next;
-    this->turns_for_next = nextTurn.turns_for_next;
+    this->cardsForNext = nextTurn.cards_for_next;
+    this->turnsForNext= nextTurn.turns_for_next;
 }
 
 void TcpClient::pickCardsSignalHandle(struct pick_cards_msg pickCards)
@@ -367,9 +374,18 @@ void TcpClient::pickCardsSignalHandle(struct pick_cards_msg pickCards)
     this->slot = pickCards.slot;
     this->count = pickCards.count;
     if(this->slot == this->slotNumber) {
-        for(int i=0; i<this->count; i++) {
+//        for(int i=0; i<this->count; i++) {
+//            this->cardsInHand.push_back(pickCards.cards[i]);
+//        }
+//        this->numberOfCardsInHand = this->cardsInHand.size();
+
+        // temporary version
+        int i=0;
+        while(pickCards.cards[i].color != 0) {
             this->cardsInHand.push_back(pickCards.cards[i]);
+            i++;
         }
+        this->numberOfCardsInHand = this->cardsInHand.size();
     }
 }
 

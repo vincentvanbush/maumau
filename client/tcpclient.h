@@ -25,6 +25,7 @@ public:
     void sendJoinGameMessage(std::string, int);
     void sendReadyMessage();
     void sendLeaveGameMessage();
+    void sendMoveMessage(short, card*, short, short);
 
     void gameListSignalHandle(struct game_list_msg);
     void joinOKSignalHandle(struct join_ok_msg);
@@ -35,6 +36,8 @@ public:
     void cannotJoinSignalHandle(struct cannot_join_msg);
     void cannotLeaveSignalHandle(struct cannot_leave_msg);
     void cannotReadySignalHandle(struct cannot_ready_msg);
+    void moveSignalHandle(struct move_msg);
+    void nextTurnSignalHandle(struct next_turn_msg);
 
     // information about existing games
     bool gameExists[50];
@@ -64,8 +67,19 @@ public:
     // information about current hand
     int numberOfCardsInHand;
     std::vector<struct card> cardsInHand;
+    std::vector<struct card> cardsInStack;
     struct card firstCardInStack;
     short moveAtSlot;
+
+    // information about move
+    short playedCardsCount;
+    struct card playedCards[4];
+
+    short colorRequest;
+    short valueRequest;
+
+    short cards_for_next;
+
 
 //private slots:
 public slots:

@@ -25,6 +25,7 @@ public slots:
     void onJoinGameButtonClicked();
     void onReadyButtonClicked();
     void onLeaveGameButtonClicked();
+    void onSendMoveButtonClicked();
 
 
 
@@ -39,12 +40,17 @@ public slots:
     void onGameEndMessageRecv();
     void onPlayerLeftMessageRecv();
     void onGameListMessageRecv();
+    void onMoveMessageRecv();
 
 
 
 
 private:
     Ui::MainWindow *ui;
+    std::string convertCardValue(int);
+    short readRequest();
+    std::vector<card> *readCards();
+
 
 };
 

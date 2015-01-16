@@ -53,6 +53,8 @@ void TcpClient::readMessage()
         this->starGameSignal();
         break;
     case NEXT_TURN:
+//        this->nextTurnSignalHandle(gameMessage.message.next_turn);
+//        this->nextTurnSignal();
         break;
     case INVALID_MOVE:
         this->invalidMoveSignal();
@@ -68,6 +70,9 @@ void TcpClient::readMessage()
     case GAME_LIST:
         this->gameListSignalHandle(gameMessage.message.game_list);
         this->gameListSignal();
+    case MOVE:
+        this->moveSignalHandle(gameMessage.message.move);
+        this->moveSignal();
         break;
     }
 
@@ -137,6 +142,28 @@ void TcpClient::sendLeaveGameMessage()
 
 }
 
+void TcpClient::sendMoveMessage(short playedCardsCount, card* playedCards, short colorRequest, short valueRequest)
+{
+    struct game_msg gameMessage;
+    struct move_msg move;
+
+
+
+    move.played_cards_count = playedCardsCount;
+    for(int i=0; i<4; i++) {
+        move.played_cards[i] = playedCards[i];
+    }
+    move.color_request = colorRequest;
+    move.value_request = valueRequest;
+
+    gameMessage.msg_type = 11;
+    gameMessage.token = this->playerToken;
+    gameMessage.game_token = this->gameToken;
+    gameMessage.game_id = this->gameIdentifier;
+    gameMessage.message.move = move;
+
+    this->tcpSocket->write((const char*) &gameMessage, (qint64) sizeof(gameMessage));
+}
 
 
 
@@ -205,6 +232,8 @@ void TcpClient::startGameSignalHandle(struct start_game_msg startGame)
         this->cardsInHand.push_back(startGame.player_cards[i]);
     }
     this->numberOfCardsInHand = 5;
+
+    this->cardsInStack.push_back(startGame.first_card_in_stack);
     this->firstCardInStack = startGame.first_card_in_stack;
     this->moveAtSlot = startGame.turn;
 
@@ -279,6 +308,31 @@ void TcpClient::playerLeftSignalHandle(struct player_left_msg playerLeft)
     this->playerNick[this->gameIdentifier][this->slotOfLastLeftPlayer][0] = '\0';
 
 }
+
+void TcpClient::moveSignalHandle(struct move_msg move)
+{
+    this->playedCardsCount = move.played_cards_count;
+    for(int i=0; i<this->playedCardsCount; i++) {
+        this->playedCards[i] = move.played_cards[i];
+        this->cardsInStack.push_back(move.played_cards[i]);
+    }
+    this->firstCardInStack = this->playedCards[this->playedCardsCount-1];
+
+    this->colorRequest = move.color_request;
+    this->valueRequest = move.value_request;
+
+}
+
+//void TcpClient::nextTurnSignalHandle(struct next_turn_msg nextTurn)
+//{
+//    if(this->slotNumber == nextTurn.turn) {
+//        this->numberOfCardsInHand += nextTurn.cards_picked_up;
+//        for(int i=0; i<nextTurn.cards_picked_up; i++) {
+//            this->cardsInHand.push_back(nextTurn.cards[i]);
+//        }
+
+//    }
+//}
 
 void TcpClient::socketError(QAbstractSocket::SocketError err)
 {

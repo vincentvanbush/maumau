@@ -14,6 +14,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->readyButton, SIGNAL(clicked()), this, SLOT(onReadyButtonClicked()));
     connect(ui->leaveGameButton, SIGNAL(clicked()), this, SLOT(onLeaveGameButtonClicked()));
 
+    //temportary
+    connect(ui->sendMoveButton, SIGNAL(clicked()), this, SLOT(onSendMoveButtonClicked()));
+
     // reacting on messages from server
     connect(tcpClient, SIGNAL(joinOKSignal()), this, SLOT(onJoinOKMessageRecv()));
     connect(tcpClient, SIGNAL(gameListSignal()), this, SLOT(onGameListMessageRecv()));
@@ -21,6 +24,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(tcpClient, SIGNAL(starGameSignal()), this, SLOT(onStartGameMessageRecv()));
     connect(tcpClient, SIGNAL(playerJoinedSignal()), this, SLOT(onPlayerJoinedMessageRecv()));
     connect(tcpClient, SIGNAL(playerLeftSignal()), this, SLOT(onPlayerLeftMessageRecv()));
+    connect(tcpClient, SIGNAL(moveSignal()), this, SLOT(onMoveMessageRecv()));
 }
 
 MainWindow::~MainWindow()
@@ -116,16 +120,17 @@ void MainWindow::onStartGameMessageRecv()
 {
     QString numOfCards = QString::number(tcpClient->numberOfCardsInHand);
 
-    ui->plainTextEdit->clear();
-    ui->plainTextEdit->appendPlainText("Cards in hand: " + numOfCards);
+    ui->handTextEdit->clear();
+
+    ui->handTextEdit->appendPlainText("Cards in hand: " + numOfCards);
     for(std::vector<card>::iterator it = tcpClient->cardsInHand.begin(); it != tcpClient->cardsInHand.end(); ++it){
         struct card card = *it;
         short color = card.color;
         short figure = card.value;
-        ui->plainTextEdit->appendPlainText("\t" + QString::number(color) + "\t" + QString::number(figure));
+        ui->handTextEdit->appendPlainText("\t" + QString::fromStdString(this->convertCardValue(color)) + "\t" + QString::fromStdString(this->convertCardValue(figure)));
     }
-    ui->plainTextEdit->appendPlainText("Card in top of stack:");
-    ui->plainTextEdit->appendPlainText("\t" + QString::number(tcpClient->firstCardInStack.color) + "\t" + QString::number(tcpClient->firstCardInStack.value));
+    ui->handTextEdit->appendPlainText("Card in top of stack:");
+    ui->handTextEdit->appendPlainText("\t" + QString::fromStdString(this->convertCardValue(tcpClient->firstCardInStack.color)) + "\t" + QString::fromStdString(this->convertCardValue(tcpClient->firstCardInStack.value)));
 }
 
 void MainWindow::onNextTurnMessageRecv()
@@ -186,6 +191,161 @@ void MainWindow::onGameListMessageRecv()
 
     }
     ui->plainTextEdit->appendPlainText("");
+}
+
+void MainWindow::onMoveMessageRecv()
+{
+    ui->moveLogTextEdit->clear();
+    ui->moveLogTextEdit->appendPlainText("Player played " + QString::number(tcpClient->playedCardsCount) + " cards");
+    for(int i=0; i<tcpClient->playedCardsCount; i++) {
+        ui->moveLogTextEdit->appendPlainText(QString::fromStdString(this->convertCardValue(tcpClient->playedCards[i].color)) + "\t" +
+                                             QString::fromStdString(this->convertCardValue(tcpClient->playedCards[i].value)));
+    }
+    if(tcpClient->colorRequest != 0)
+        ui->moveLogTextEdit->appendPlainText("Requested color: " + QString::fromStdString(this->convertCardValue(tcpClient->colorRequest)));
+    else
+        ui->moveLogTextEdit->appendPlainText("No requests about color");
+    if(tcpClient->valueRequest != 0)
+        ui->moveLogTextEdit->appendPlainText("Requested value: " + QString::fromStdString(this->convertCardValue(tcpClient->valueRequest)));
+    else
+        ui->moveLogTextEdit->appendPlainText("No requests about value");
+}
+
+std::string MainWindow::convertCardValue(int value)
+{
+    switch(value) {
+    case 2: return "2"; break;
+    case 3: return "3"; break;
+    case 4: return "4"; break;
+    case 5: return "5"; break;
+    case 6: return "6"; break;
+    case 7: return "7"; break;
+    case 8: return "8"; break;
+    case 9: return "9"; break;
+    case 10: return "10"; break;
+    case 23: return "Jack"; break;
+    case 21: return "Queen"; break;
+    case 20: return "King"; break;
+    case 22: return "Ace"; break;
+    case 30: return "Heart"; break;
+    case 31: return "Tile"; break;
+    case 32: return "Clover"; break;
+    case 33: return "Pike"; break;
+    default: return "";
+    }
+}
+
+short MainWindow::readRequest()
+{
+    QString request = ui->requestEdit->text();
+    if(request.startsWith("H")) return 30;
+    else if(request.startsWith("T")) return 31;
+    else if(request.startsWith("C")) return 32;
+    else if(request.startsWith("P")) return 33;
+
+    else if(request.startsWith("K")) return 20;
+    else if(request.startsWith("Q")) return 21;
+    else if(request.startsWith("A")) return 22;
+    else if(request.startsWith("J")) return 23;
+
+    else if(request.startsWith("2")) return 2;
+    else if(request.startsWith("3")) return 3;
+    else if(request.startsWith("4")) return 4;
+    else if(request.startsWith("5")) return 5;
+    else if(request.startsWith("6")) return 6;
+    else if(request.startsWith("7")) return 7;
+    else if(request.startsWith("8")) return 8;
+    else if(request.startsWith("9")) return 9;
+    else if(request.startsWith("10")) return 10;
+
+    else return 0;
+
+}
+
+std::vector<card>* MainWindow::readCards()
+{
+    std::vector<card>* cards = new std::vector<card>();
+    QString c = ui->playedCardsEdit->text();
+    QStringList listOfCards = c.split(" ");
+    qDebug() << "Ilosc kart: " + QString::number(listOfCards.length());
+    foreach (QString cardString, listOfCards) {
+        card cardTemp;
+        short color;
+        short value;
+        if(cardString.startsWith("H")) color = 30;
+        if(cardString.startsWith("T")) color = 31;
+        if(cardString.startsWith("C")) color = 32;
+        if(cardString.startsWith("P")) color = 33;
+
+
+        if(cardString.contains("K")) value = 20;
+        if(cardString.contains("Q")) value = 21;
+        if(cardString.contains("A")) value = 22;
+        if(cardString.contains("J")) value = 23;
+        if(cardString.contains("2")) value = 2;
+        if(cardString.contains("3")) value = 3;
+        if(cardString.contains("4")) value = 4;
+        if(cardString.contains("5")) value = 5;
+        if(cardString.contains("6")) value = 6;
+        if(cardString.contains("7")) value = 7;
+        if(cardString.contains("8")) value = 8;
+        if(cardString.contains("9")) value = 9;
+        if(cardString.contains("10")) value = 10;
+
+        cardTemp.color = color;
+        cardTemp.value = value;
+        (*cards).push_back(cardTemp);
+    }
+
+
+
+
+    for(std::vector<card>::iterator it = (*cards).begin(); it != (*cards).end(); ++it) {
+        qDebug() << QString::fromStdString(this->convertCardValue(it->color)) + "\t" + QString::fromStdString(this->convertCardValue(it->value));
+    }
+
+
+    return cards;
+
+}
+
+void MainWindow::onSendMoveButtonClicked()
+{
+    short playedCardsCount = 0;
+    card playedCards[4];
+    for(int i=0; i<4; i++) {
+        playedCards[i].color = 0;
+        playedCards[i].value = 0;
+    }
+    short colorRequest = 0;
+    short valueRequest = 0;
+
+    std::vector<card>* cards = readCards();
+    playedCardsCount = (*cards).size();
+
+    int k = 0;
+    for(std::vector<card>::iterator it = (*cards).begin(); it != (*cards).end(); ++it) {
+        playedCards[k].color = it->color;
+        playedCards[k].value = it->value;
+    }
+
+    short request = readRequest();
+    if(request != 0) {
+        if(request >= 30 && request <= 33) {
+            colorRequest = request;
+        }
+        else {
+            valueRequest = request;
+        }
+    }
+
+    // VALIDATION
+
+    tcpClient->sendMoveMessage(playedCardsCount, playedCards, colorRequest, valueRequest);
+
+
+
+    //this->readCards();
 }
 
 

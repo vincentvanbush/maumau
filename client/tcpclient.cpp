@@ -9,6 +9,10 @@ TcpClient::TcpClient()
     for(int i=0; i<4; i++) {
         this->playersAtSlots[i] = nullptr;
     }
+    this->turn = 0;
+    this->turnsForNext = 0;
+    this->cardsForNext = 0;
+
 
     this->tcpSocket = new QTcpSocket(this);
     connect(tcpSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(socketError(QAbstractSocket::SocketError)));
@@ -20,6 +24,8 @@ TcpClient::TcpClient()
 TcpClient::~TcpClient()
 {
 }
+
+
 void TcpClient::readMessage()
 {
     struct game_msg gameMessage;
@@ -29,13 +35,15 @@ void TcpClient::readMessage()
 
     int messageType = gameMessage.msg_type;
 
-    qDebug() << messageType;
-
-
     switch(messageType) {
     case CANNOT_JOIN:
         this->cannotJoinSignal();
         break;
+    case CANNOT_READY:
+        this->cannotReadySignal();
+        break;
+    case CANNOT_LEAVE:
+        this->cannotLeaveSignal();
     case JOIN_OK:
         this->joinOKSignalHandle(gameMessage.message.join_ok);
         this->joinOKSignal();
@@ -49,22 +57,60 @@ void TcpClient::readMessage()
         this->starGameSignal();
         break;
     case NEXT_TURN:
+        this->nextTurnSignalHandle(gameMessage.message.next_turn);
+        this->nextTurnSignal();
         break;
+    case PICK_CARDS:
+        this->pickCardsSignalHandle(gameMessage.message.pick_cards);
+        this->pickCardsSignal();
     case INVALID_MOVE:
         this->invalidMoveSignal();
         break;
     case GAME_END:
+        this->gameEndSignalHandle(gameMessage.message.game_end);
+        this->gameEndSignal();
         break;
     case PLAYER_LEFT:
+        this->playerLeftSignalHandle(gameMessage.message.player_left);
+        this->playerLeftSignal();
         break;
     case GAME_LIST:
         this->gameListSignalHandle(gameMessage.message.game_list);
         this->gameListSignal();
+    case MOVE:
+        this->moveSignalHandle(gameMessage.message.move);
+        this->moveSignal();
         break;
     }
 
 }
 
+void TcpClient::updateHandAfterMove(short playedCardsCount, card* cards)
+{
+    card c;
+    if(playedCardsCount > 0) {
+        for(int i=0; i<playedCardsCount; i++) {
+            for(std::vector<card>::iterator it = this->cardsInHand.begin(); it != this->cardsInHand.end(); ++it) {
+                if(it->color == cards[i].color && it->value == cards[i].value) {
+
+                    c.color = it->color;
+                    c.value = it->value;
+                    this->cardsInStack.push_back(c);
+                    this->cardsInHand.erase(it);
+                    break;
+                }
+            }
+        }
+
+        this->firstCardInStack.color = c.color;
+        this->firstCardInStack.value = c.value;
+        this->numberOfCardsInHand = this->cardsInHand.size();
+    }
+}
+
+
+
+// methods sending communicates to server
 void TcpClient::sendJoinGameMessage(std::string playerName, int gameID)
 {
     struct game_msg gameMessage;
@@ -80,7 +126,6 @@ void TcpClient::sendJoinGameMessage(std::string playerName, int gameID)
 
     this->tcpSocket->write((const char*) &gameMessage, (qint64) sizeof(gameMessage));
 }
-
 
 void TcpClient::sendRequestGamesMessage()
 {
@@ -98,11 +143,62 @@ void TcpClient::sendReadyMessage()
     gameMessage.game_token = this->gameToken;
     gameMessage.game_id = this->gameIdentifier;
 
+    //gameMessage.message.ready.dummy = 0;
     // is it necessery to send also proper struct if it's content is dummy?
 
     this->tcpSocket->write((const char*) &gameMessage, (qint64) sizeof(gameMessage));
 }
 
+void TcpClient::sendLeaveGameMessage()
+{
+    struct game_msg gameMessage;
+    gameMessage.msg_type = 2;
+    gameMessage.token = this->playerToken;
+    gameMessage.game_token = this->gameToken;
+    gameMessage.game_id = this->gameIdentifier;
+    gameMessage.message.leave_game.slot = this->slotNumber;
+
+
+
+    // updating info about this game
+    this->playersCount[this->gameIdentifier]--;
+    for(int i=0; i<4; i++) {
+        this->playerNick[this->gameIdentifier][i][0] = '\0';
+    }
+    this->started[this->gameIdentifier] = false;
+
+
+    this->tcpSocket->write((const char*) &gameMessage, (qint64) sizeof(gameMessage));
+
+
+
+}
+
+void TcpClient::sendMoveMessage(short playedCardsCount, card* playedCards, short colorRequest, short valueRequest)
+{
+    struct game_msg gameMessage;
+    struct move_msg move;
+
+
+
+    move.played_cards_count = playedCardsCount;
+    for(int i=0; i<4; i++) {
+        move.played_cards[i] = playedCards[i];
+    }
+    move.color_request = colorRequest;
+    move.value_request = valueRequest;
+
+    gameMessage.msg_type = 11;
+    gameMessage.token = this->playerToken;
+    gameMessage.game_token = this->gameToken;
+    gameMessage.game_id = this->gameIdentifier;
+    gameMessage.message.move = move;
+
+    this->tcpSocket->write((const char*) &gameMessage, (qint64) sizeof(gameMessage));
+}
+
+
+// methods handling communicates from server
 void TcpClient::gameListSignalHandle(struct game_list_msg gameList)
 {
     for(int i=0; i<50; i++) {
@@ -151,31 +247,43 @@ void TcpClient::joinOKSignalHandle(struct join_ok_msg joinOK)
     }
 
 
+    // updating info about this game
+    this->gameExists[this->gameIdentifier] = true;
+    this->gameId[this->gameIdentifier] = this->gameIdentifier;
+    this->playersCount[this->gameIdentifier]++;
+    strcpy(this->playerNick[this->gameIdentifier][this->slotNumber], this->playerName);
+
 
 
 }
 
 void TcpClient::startGameSignalHandle(struct start_game_msg startGame)
 {
+
     for(int i=0; i<5; i++) {
         this->cardsInHand.push_back(startGame.player_cards[i]);
     }
     this->numberOfCardsInHand = 5;
+
+    this->cardsInStack.push_back(startGame.first_card_in_stack);
     this->firstCardInStack = startGame.first_card_in_stack;
     this->moveAtSlot = startGame.turn;
+
+    this->started[this->gameIdentifier] = true;
 }
 
 void TcpClient::playerJoinedSignalHandle(struct player_joined_msg playerJoined)
 {
-    char* playerName;
+
+    char playerName[30];
     short slotNumber = playerJoined.slot_number;
     strcpy(playerName, playerJoined.player_name);
 
     this->slotOfLastJoinedPlayer = slotNumber;
     strcpy(this->nameOfLastJoinedPlayer, playerName);
 
-    std::string name(playerName);
-    this->playersAtSlots[slotNumber] = &(name);
+    std::string *name = new std::string(playerName);
+    this->playersAtSlots[slotNumber] = name;
 
     int numberOfPlayersInGame = 0;
     for(std::map<int, std::string*>::iterator it = this->playersAtSlots.begin(); it != this->playersAtSlots.end(); ++it) {
@@ -192,8 +300,97 @@ void TcpClient::playerJoinedSignalHandle(struct player_joined_msg playerJoined)
         }
 
     }
+
+    // updating info about this game
+    this->playersCount[this->gameIdentifier]++;
+    strcpy(this->playerNick[this->gameIdentifier][slotNumber], playerName);
 }
 
+void TcpClient::gameEndSignalHandle(struct game_end_msg gameEnd)
+{
+    this->numberOfCardsInHand = 0;
+    this->cardsInHand.clear();
+    for(std::map<int, std::string*>::iterator it = playersAtSlots.begin(); it != playersAtSlots.end(); ++it) {
+        it->second = nullptr;
+    }
+
+    this->gameIdentifier = 0;
+    this->nameOfLastJoinedPlayer[0] = '\0';
+
+
+    // updating info about this game
+    this->gameExists[this->gameIdentifier] = false;
+    this->playersCount[this->gameIdentifier] = 0;
+    for(int i=0; i<4; i++) {
+        this->playerNick[this->gameIdentifier][i][0] = '\0';
+    }
+    this->started[this->gameIdentifier] = false;
+}
+
+void TcpClient::playerLeftSignalHandle(struct player_left_msg playerLeft)
+{
+    this->slotOfLastLeftPlayer = playerLeft.slot;
+    const char *playerName = (*(this->playersAtSlots[this->slotOfLastLeftPlayer])).c_str();
+    strcpy(this->nameOfLastLeftPlayer, playerName);
+
+    this->playersAtSlots[this->slotOfLastLeftPlayer] = nullptr;
+
+    // updating info about this game
+    this->playersCount[this->gameIdentifier]--;
+    this->playerNick[this->gameIdentifier][this->slotOfLastLeftPlayer][0] = '\0';
+
+}
+
+void TcpClient::moveSignalHandle(struct move_msg move)
+{
+    this->playedCardsCount = move.played_cards_count;
+    for(int i=0; i<this->playedCardsCount; i++) {
+        this->playedCards[i] = move.played_cards[i];
+        this->cardsInStack.push_back(move.played_cards[i]);
+    }
+
+    card c;
+    c.color = this->cardsInStack.end()->color;
+    c.value = this->cardsInStack.end()->value;
+    //this->firstCardInStack = this->playedCards[this->playedCardsCount-1];
+    this->firstCardInStack.color = c.color;
+    this->firstCardInStack.value = c.value;
+
+
+    this->colorRequest = move.color_request;
+    this->valueRequest = move.value_request;
+
+}
+
+void TcpClient::nextTurnSignalHandle(struct next_turn_msg nextTurn)
+{
+    this->turn = nextTurn.turn;
+    this->cardsForNext = nextTurn.cards_for_next;
+    this->turnsForNext= nextTurn.turns_for_next;
+}
+
+void TcpClient::pickCardsSignalHandle(struct pick_cards_msg pickCards)
+{
+    this->slot = pickCards.slot;
+    this->count = pickCards.count;
+    if(this->slot == this->slotNumber) {
+//        for(int i=0; i<this->count; i++) {
+//            this->cardsInHand.push_back(pickCards.cards[i]);
+//        }
+//        this->numberOfCardsInHand = this->cardsInHand.size();
+
+        // temporary version
+        int i=0;
+        while(pickCards.cards[i].color != 0) {
+            this->cardsInHand.push_back(pickCards.cards[i]);
+            i++;
+        }
+        this->numberOfCardsInHand = this->cardsInHand.size();
+    }
+}
+
+
+// methods establishing connection with server
 void TcpClient::socketError(QAbstractSocket::SocketError err)
 {
     qDebug() << "Problem with socket";
@@ -204,3 +401,5 @@ void TcpClient::socketConnected()
 {
     qDebug() << "Connection completed";
 }
+
+

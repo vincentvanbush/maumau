@@ -24,19 +24,34 @@ public slots:
     void onRequestGamesButtonClicked();
     void onJoinGameButtonClicked();
     void onReadyButtonClicked();
+    void onLeaveGameButtonClicked();
+    void onSendMoveButtonClicked();
 
-    void onJoinOKMessageRecv();
-    void onGameListMessageRecv();
+
+
     void onCannotJoinMessageRecv();
-    void onInvalidMoveMessageRecv();
-    void onStartGameMessageRecv();
+    void onCannotReadyMessageRecv();
+    void onCannotLeaveMessageRecv();
+    void onJoinOKMessageRecv();
     void onPlayerJoinedMessageRecv();
+    void onStartGameMessageRecv();
+    void onNextTurnMessageRecv();
+    void onPickCardsMessageRecv();
+    void onInvalidMoveMessageRecv();
+    void onGameEndMessageRecv();
+    void onPlayerLeftMessageRecv();
+    void onGameListMessageRecv();
+    void onMoveMessageRecv();
 
 
 
 
 private:
     Ui::MainWindow *ui;
+    std::string convertCardValue(int);
+    short readRequest();
+    std::vector<card> *readCards();
+
 
 };
 

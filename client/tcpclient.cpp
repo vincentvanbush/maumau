@@ -17,7 +17,7 @@ TcpClient::TcpClient()
     this->tcpSocket = new QTcpSocket(this);
     connect(tcpSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(socketError(QAbstractSocket::SocketError)));
     connect(tcpSocket, SIGNAL(connected()), this, SLOT(socketConnected()));
-    connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(readMessage()), Qt::DirectConnection);
+    connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(readMessage()));
     tcpSocket->connectToHost(this->serverIPAddress, this->serverPort);
 
 }
@@ -28,67 +28,78 @@ TcpClient::~TcpClient()
 
 void TcpClient::readMessage()
 {
-    struct game_msg gameMessage;
+
+    void * gm = malloc(10 * sizeof(struct game_msg));
     QHostAddress addr (serverIPAddress);
 
-    tcpSocket->read((char *) &gameMessage, (qint64) sizeof(gameMessage));
-
-    int messageType = gameMessage.msg_type;
-
-
-    qDebug() << "Message type: " + QString::number(messageType);
-
-    switch(messageType) {
-    case CANNOT_JOIN:
-        this->cannotJoinSignal();
-        break;
-    case CANNOT_READY:
-        this->cannotReadySignal();
-        break;
-    case CANNOT_LEAVE:
-        this->cannotLeaveSignal();
-        break;
-    case JOIN_OK:
-        this->joinOKSignalHandle(gameMessage.message.join_ok);
-        this->joinOKSignal();
-        break;
-    case PLAYER_JOINED:
-        this->playerJoinedSignalHandle(gameMessage.message.player_joined);
-        this->playerJoinedSignal();
-        break;
-    case START_GAME:
-        this->startGameSignalHandle(gameMessage.message.start_game);
-        this->starGameSignal();
-        break;
-    case NEXT_TURN:
-        this->nextTurnSignalHandle(gameMessage.message.next_turn);
-        this->nextTurnSignal();
-        break;
-    case PICK_CARDS:
-        this->pickCardsSignalHandle(gameMessage.message.pick_cards);
-        this->pickCardsSignal();
-        break;
-    case INVALID_MOVE:
-        this->invalidMoveSignal();
-        break;
-    case GAME_END:
-        this->gameEndSignalHandle(gameMessage.message.game_end);
-        this->gameEndSignal();
-        break;
-    case PLAYER_LEFT:
-        this->playerLeftSignalHandle(gameMessage.message.player_left);
-        this->playerLeftSignal();
-        break;
-    case GAME_LIST:
-        this->gameListSignalHandle(gameMessage.message.game_list);
-        this->gameListSignal();
-        break;
-    case MOVE:
-        this->moveSignalHandle(gameMessage.message.move);
-        this->moveSignal();
-        break;
+    int bytesRead = 0;
+    int x;
+    while ((x = tcpSocket->read((char *) (gm + bytesRead), (qint64) sizeof(struct game_msg))) > 0) {
+        bytesRead += x;
+        qDebug() << "Read: " << bytesRead;
     }
 
+    for (int i = 0; i < bytesRead; i += sizeof (struct game_msg)) {
+
+
+        struct game_msg gameMessage = *((struct game_msg*)(gm+i));
+
+        int messageType = gameMessage.msg_type;
+
+
+        qDebug() << "Message type: " + QString::number(messageType);
+
+        switch(messageType) {
+        case CANNOT_JOIN:
+            this->cannotJoinSignal();
+            break;
+        case CANNOT_READY:
+            this->cannotReadySignal();
+            break;
+        case CANNOT_LEAVE:
+            this->cannotLeaveSignal();
+            break;
+        case JOIN_OK:
+            this->joinOKSignalHandle(gameMessage.message.join_ok);
+            this->joinOKSignal();
+            break;
+        case PLAYER_JOINED:
+            this->playerJoinedSignalHandle(gameMessage.message.player_joined);
+            this->playerJoinedSignal();
+            break;
+        case START_GAME:
+            this->startGameSignalHandle(gameMessage.message.start_game);
+            this->starGameSignal();
+            break;
+        case NEXT_TURN:
+            this->nextTurnSignalHandle(gameMessage.message.next_turn);
+            this->nextTurnSignal();
+            break;
+        case PICK_CARDS:
+            this->pickCardsSignalHandle(gameMessage.message.pick_cards);
+            this->pickCardsSignal();
+            break;
+        case INVALID_MOVE:
+            this->invalidMoveSignal();
+            break;
+        case GAME_END:
+            this->gameEndSignalHandle(gameMessage.message.game_end);
+            this->gameEndSignal();
+            break;
+        case PLAYER_LEFT:
+            this->playerLeftSignalHandle(gameMessage.message.player_left);
+            this->playerLeftSignal();
+            break;
+        case GAME_LIST:
+            this->gameListSignalHandle(gameMessage.message.game_list);
+            this->gameListSignal();
+            break;
+        case MOVE:
+            this->moveSignalHandle(gameMessage.message.move);
+            this->moveSignal();
+            break;
+        }
+    }
 }
 
 void TcpClient::updateHandAfterMove(short playedCardsCount, card* cards)

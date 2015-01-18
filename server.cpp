@@ -43,7 +43,7 @@ void *client_loop(void *arg) {
 			struct join_game_msg msg = msg_buffer.message.join_game;
 			struct game_info* game;
 
-			
+
 			if (games[msg.game_id] == nullptr) {
 				// Game does not exist yet, we have to create it
 				printf("--- Game %d does not exist yet\n", msg.game_id);
@@ -83,8 +83,8 @@ void *client_loop(void *arg) {
 					}
 					break;
 				}
-			}			
-			
+			}
+
 			struct player_info* player = new_player (msg.player_name);
 			pthread_mutex_lock(&games_lock);
 			player_join_game (player, game);
@@ -126,10 +126,10 @@ void *client_loop(void *arg) {
 				exit (EXIT_FAILURE);
 			}
 			else printf("Sent JOIN_OK to client\n");
-			
+
 		}
 		break;
-		
+
 		case MOVE: {
 			printf("Received move message\n");
 
@@ -152,7 +152,7 @@ void *client_loop(void *arg) {
 
 			if (valid_move) {
 				// Update game state
-				
+
 				std::deque <struct card> cards_picked_up;
 				short sender_turn = game -> turn;
 				cards_picked_up = update_game_state (&move, games[game_id]);
@@ -230,6 +230,7 @@ void *client_loop(void *arg) {
 					perror ("Error sending INVALID_MOVE to client socket");
 					exit (EXIT_FAILURE);
 				}
+				else printf("Sent INVALID_MOVE to client \n");
 			}
 		}
 		break;
@@ -240,7 +241,7 @@ void *client_loop(void *arg) {
 			int game_token = msg_buffer.game_token;
 			int game_id = msg_buffer.game_id;
 			short slot = msg_buffer.message.leave_game.slot;
-			
+
 			bool invalid_message = false;
 			struct game_info* game;
 
@@ -317,7 +318,7 @@ void *client_loop(void *arg) {
 				game = games[msg_buffer.game_id];
 				// check if received player token is valid
 				invalid_player_token = true;
-				
+
 				if (game == nullptr || game -> game_token != game_token) {
 					// if received game token is different to the actual one, send error
 					invalid_player_token = true;
@@ -339,7 +340,7 @@ void *client_loop(void *arg) {
 					exit (EXIT_FAILURE);
 				}
 				else printf ("Cannot ready message sent\n");
-					
+
 				break;
 			}
 
@@ -371,7 +372,7 @@ void *client_loop(void *arg) {
 						for (int j = 0; j < player -> cards.size(); j++)
 							start_game -> player_cards[j] = player -> cards[j];
 						start_game -> first_card_in_stack = game -> played_cards.front();
-						
+
 						start_game -> turn = 0;
 
 						if (send (player_sck, &start_game_msg, sizeof start_game_msg, 0) < 0) {
@@ -380,10 +381,10 @@ void *client_loop(void *arg) {
 						}
 						else printf ("Start game message sent to %s\n", game -> players[i] -> player_name);
 					}
-					
+
 				}
 			}
-			
+
 
 		}
 		break;
@@ -393,7 +394,7 @@ void *client_loop(void *arg) {
 
 			struct game_list_msg game_list;
 			pthread_mutex_lock(&games_lock);
-			for (int i = 0; i < MAX_GAME_NUM; i++) { 
+			for (int i = 0; i < MAX_GAME_NUM; i++) {
 				if (games[i] == nullptr) {
 					game_list.game_exists[i] = false;
 				}
@@ -428,7 +429,7 @@ void *client_loop(void *arg) {
 }
 
 void *main_loop(void *arg) {
-	
+
 	games = new struct game_info*[50];
 	for (int i = 0; i < 50; i++) {
 		games[i] = nullptr;
@@ -466,7 +467,7 @@ void *main_loop(void *arg) {
 	}
 
 	close_socket(srv_socket);
-} 	
+}
 
 int main(int argc, char* argv[]) {
 
@@ -514,9 +515,9 @@ int main(int argc, char* argv[]) {
 
 		printf("\n\n");
 	}
-	
+
 	printf ("Press ENTER to exit server\n");
 	getc (stdin);
-  
+
 	exit (EXIT_SUCCESS);
 }

@@ -21,7 +21,7 @@ ushort server_port = 1234;
 struct sockaddr_in srv_addr = local_address(server_port);
 int cl_socket = create_socket();
 
-int game_token, player_token, game_id;
+int game_token, player_token, game_id, slot_number;
 
 void *recv_loop(void *arg) {
 	struct game_msg msg_buffer;
@@ -59,7 +59,8 @@ void *recv_loop(void *arg) {
 			struct join_ok_msg join_ok = msg_buffer.message.join_ok;
 			player_token = join_ok.player_token;
 			game_token = join_ok.game_token;
-			printf("Player token: %d\nGame token: %d\n", player_token, game_token);
+			slot_number = join_ok.slot_number;
+			printf("Player token: %d\nGame token: %d\nSlot: %d\n", player_token, game_token, slot_number);
 		}
 
 		else if (msg_buffer.msg_type == START_GAME) {
@@ -76,18 +77,18 @@ void *recv_loop(void *arg) {
 }
 
 int main(int argc, char* argv[]) {
-	
+
 
 	// Create client address info
 	struct sockaddr_in cl_addr = local_address(client_port);
 
 	// Initialize UDP socket
-	
+
 /*
 	// Bind UDP socket to client address
 	bind_socket(cl_socket, cl_addr);
 */
-	
+
 	inet_aton("127.0.0.1", &srv_addr.sin_addr);
 
 	if (connect (cl_socket, (struct sockaddr*) &srv_addr, sizeof srv_addr) < 0) {
@@ -116,6 +117,13 @@ int main(int argc, char* argv[]) {
 			msg_buffer.token = player_token;
 			msg_buffer.game_token = game_token;
 			msg_buffer.game_id = game_id;
+		}
+
+		else if (msg_buffer.msg_type == LEAVE_GAME) {
+			msg_buffer.token = player_token;
+			msg_buffer.game_token = game_token;
+			msg_buffer.game_id = game_id;
+			msg_buffer.message.leave_game.slot = slot_number;
 		}
 
 		else if (msg_buffer.msg_type == MOVE) {
@@ -150,7 +158,7 @@ int main(int argc, char* argv[]) {
 
 	}
 
-	
+
 
 	// Close socket
 	close_socket(cl_socket);

@@ -52,6 +52,7 @@ struct player_info* new_player (char* player_name) {
 	strcpy (ret -> player_name, player_name);
 	ret -> ready = false;
 	ret -> left = false;
+	ret -> finished = false;
 	ret -> turns_to_miss = 0;
 
 	return ret;

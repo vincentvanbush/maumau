@@ -483,6 +483,12 @@ int main(int argc, char* argv[]) {
 		printf ("Enter game id to show state ");
 		scanf ("%d", &id);
 
+		if (games[id] == nullptr) {
+			puts("Game doesn't exist.");
+			continue;
+		}
+
+		pthread_mutex_lock(&games_lock);
 		printf ("Game %d\n", id);
 		for (int i = 0; i < games[id] -> players.size(); i++) {
 			printf("%d: %s ", i, games[id] -> players[i] -> player_name);
@@ -512,7 +518,8 @@ int main(int argc, char* argv[]) {
 		printf("Turns to miss: %d\n", games[id] -> turns_to_miss);
 		printf("Cards to pick: %d\n", games[id] -> cards_to_pick);
 		printf("Players still in game: %d, finished players: %d\n", players_still_in_game(games[id]), finished_players(games[id]));
-
+		pthread_mutex_unlock(&games_lock);
+		
 		printf("\n\n");
 	}
 

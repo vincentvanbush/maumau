@@ -275,8 +275,8 @@ void *client_loop(void *arg) {
 				player_left_msg.msg_type = PLAYER_LEFT;
 				player_left_msg.message.player_left.slot = slot;
 
-				for (int i = 0; i < game -> players.size() && i != slot; i++) {
-					if (send (game -> players[i] -> socket, &player_left_msg, sizeof player_left_msg, 0) < 0) {
+				for (int i = 0; i < game -> players.size(); i++) {
+					if (i != slot && send (game -> players[i] -> socket, &player_left_msg, sizeof player_left_msg, 0) < 0) {
 						perror ("Error sending PLAYER_LEFT to client socket");
 						exit (EXIT_FAILURE);
 					}
@@ -286,8 +286,8 @@ void *client_loop(void *arg) {
 				if (!game -> players[slot] -> finished) {
 					struct game_msg game_end_msg;
 					game_end_msg.msg_type = GAME_END;
-					for (int i = 0; i < game -> players.size() && i != slot; i++) {
-						if (send (game -> players[i] -> socket, &game_end_msg, sizeof game_end_msg, 0) < 0) {
+					for (int i = 0; i < game -> players.size(); i++) {
+						if (i != slot && send (game -> players[i] -> socket, &game_end_msg, sizeof game_end_msg, 0) < 0) {
 							perror ("Error sending GAME_END to client socket");
 							exit (EXIT_FAILURE);
 						}
@@ -519,7 +519,7 @@ int main(int argc, char* argv[]) {
 		printf("Cards to pick: %d\n", games[id] -> cards_to_pick);
 		printf("Players still in game: %d, finished players: %d\n", players_still_in_game(games[id]), finished_players(games[id]));
 		pthread_mutex_unlock(&games_lock);
-		
+
 		printf("\n\n");
 	}
 

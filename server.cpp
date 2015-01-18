@@ -175,6 +175,7 @@ void *client_loop(void *arg) {
 					pick_cards_msg.msg_type = PICK_CARDS;
 
 					pick_cards_msg.message.pick_cards.slot = sender_turn;
+					pick_cards_msg.message.pick_cards.count = cards_picked_up.size();
 
 					if (player_token == game -> players[sender_turn] -> token) {
 						for (int i = 0; i < cards_picked_up.size(); i++)

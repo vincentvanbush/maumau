@@ -217,7 +217,7 @@ void *client_loop(void *arg) {
 						else printf("Sent GAME_END to client %s\n", game -> players[i] -> player_name);
 					}
 
-					puts ("Deleting");
+					puts ("Deleting game");
 					delete games[msg_buffer.game_id];
 					games[msg_buffer.game_id] = nullptr;
 				}
@@ -292,6 +292,10 @@ void *client_loop(void *arg) {
 							exit (EXIT_FAILURE);
 						}
 						else printf("Sent GAME_END to client %s\n", game -> players[i] -> player_name);
+
+						puts ("Deleting game");
+						delete games[msg_buffer.game_id];
+						games[msg_buffer.game_id] = nullptr;
 					}
 				}
 			}

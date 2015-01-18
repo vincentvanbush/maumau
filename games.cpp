@@ -19,7 +19,7 @@ struct game_info* new_game(int id) {
 	ret->request_ttl = 0;
 
 	// shuffle the deck
-	struct card card_array[52] = { 
+	struct card card_array[52] = {
 		{ KING, HEART }, { KING, TILE }, { KING, CLOVER }, { KING, PIKE },
 		{ QUEEN, HEART }, { QUEEN, TILE }, { QUEEN, CLOVER }, { QUEEN, PIKE },
 		{ ACE, HEART }, { ACE, TILE }, { ACE, CLOVER }, { ACE, PIKE },
@@ -85,6 +85,12 @@ struct card top_card (struct game_info* game) {
 }
 
 bool validate_move (struct game_msg* move_msg, struct game_info* game) {
+	// if game is null
+	if (game == nullptr) {
+		puts ("Game is null");
+		return false;
+	}
+
 	// if played cards count > 4, message is rubbish!
 	if (move_msg -> message.move.played_cards_count > 4) {
 		puts ("Malformed message, cards count > 4");
@@ -96,6 +102,12 @@ bool validate_move (struct game_msg* move_msg, struct game_info* game) {
 	std::vector <struct card> played_cards (move.played_cards, move.played_cards + move.played_cards_count);
 	int player_token = move_msg -> token;
 	int game_token = move_msg -> game_token;
+
+	// Check if game is started
+	if (!game -> started) {
+		puts ("Game is not started");
+		return false;
+	}
 
 	// Check game token
 	if (game -> game_token != game_token) {
@@ -129,7 +141,7 @@ bool validate_move (struct game_msg* move_msg, struct game_info* game) {
 
 		struct player_info *player = game -> players[game -> turn];
 		std::vector <struct card> &hand = player -> cards;
-		
+
 		for (int i = 0; i < played_cards.size(); i++) {
 			bool card_eq = false;
 			for (int j = 0; j < hand.size(); j++) {
@@ -167,7 +179,7 @@ bool validate_move (struct game_msg* move_msg, struct game_info* game) {
 		}
 		// If challenged to eat cards...
 		else if (game -> cards_to_pick > 0) {
-			// with a 2 or 3, one can respond with 2, 3 or king	
+			// with a 2 or 3, one can respond with 2, 3 or king
 			if (top.value <= 3 && played_cards[0].value != top.value && played_cards[0].color != top.color
 				&& played_cards[0].value != 2 && played_cards[0].value != 3 && played_cards[0].value != KING) {
 				puts ("There is a card pick challenge but no 2/3/K is played");
@@ -236,10 +248,8 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 
 		if (player -> turns_to_miss > 0) {
 			player -> turns_to_miss--;
-			return picked_cards;
 		}
-
-		if (cards_to_pick == 0 && turns_to_miss == 0) {
+		else if (cards_to_pick == 0 && turns_to_miss == 0) {
 			picked = 1;
 		}
 		else if (cards_to_pick != 0) {
@@ -312,7 +322,7 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 		}
 	}
 
-	
+
 	if (player -> cards.size() == 0) {
 		player -> finished = true;
 	}
@@ -348,7 +358,7 @@ std::deque <struct card> pick_n_cards (struct game_info* game, short n, short pl
 
 bool is_finished (struct game_info* game) {
 	short ret = finished_players (game);
-	if (ret == game -> players.size() - 1) 
+	if (ret == game -> players.size() - 1)
 		return true;
 	return false;
 }

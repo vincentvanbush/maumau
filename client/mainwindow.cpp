@@ -52,16 +52,19 @@ void MainWindow::onJoinGameButtonClicked()
     std::string playerName = name.toStdString();
     QString id = ui->setGameIdEdit->text();
     int gameID = id.toInt();
+    ui->plainTextEdit->appendPlainText("---Sending request to join game");
     tcpClient->sendJoinGameMessage(playerName, gameID);
 }
 
 void MainWindow::onReadyButtonClicked()
 {
+    ui->plainTextEdit->appendPlainText("---Sending ready message");
     tcpClient->sendReadyMessage();
 }
 
 void MainWindow::onLeaveGameButtonClicked()
 {
+    ui->plainTextEdit->appendPlainText("---Sending leave request");
     tcpClient->sendLeaveGameMessage();
 }
 
@@ -100,6 +103,7 @@ void MainWindow::onSendMoveButtonClicked()
     tcpClient->sendMoveMessage(playedCardsCount, playedCards, colorRequest, valueRequest);
 
     tcpClient->updateHandAfterMove(playedCardsCount, playedCards);
+
     // update cards in hand in interface
     this->onStartGameMessageRecv();
 
@@ -156,6 +160,7 @@ void MainWindow::onJoinOKMessageRecv()
             ui->plainTextEdit->appendPlainText("Slot " + QString::number(it->first) + "\t" + name);
         }
     }
+    ui->plainTextEdit->appendPlainText("");
 
     ui->nameEdit->setText(QString::fromUtf8(tcpClient->playerName));
 
@@ -165,6 +170,7 @@ void MainWindow::onJoinOKMessageRecv()
 void MainWindow::onPlayerJoinedMessageRecv()
 {
     ui->plainTextEdit->appendPlainText("New player " + QString::fromUtf8(tcpClient->nameOfLastJoinedPlayer) + " joined at slot " + QString::number(tcpClient->slotOfLastJoinedPlayer));
+    ui->plainTextEdit->appendPlainText("");
 }
 
 void MainWindow::onStartGameMessageRecv()
@@ -180,32 +186,34 @@ void MainWindow::onStartGameMessageRecv()
         short figure = card.value;
         ui->handTextEdit->appendPlainText("\t" + QString::fromStdString(this->convertCardValue(color)) + "\t" + QString::fromStdString(this->convertCardValue(figure)));
     }
-    //int k = tcpClient->cardsInStack.back().color;
-    //tcpClient->cardsInStack.p
-    //qDebug() << QString::number(tcpClient->cardsInStack.back().color);
     ui->handTextEdit->appendPlainText("Card in top of stack:");
-    ui->handTextEdit->appendPlainText("\t" + QString::fromStdString(this->convertCardValue(/*tcpClient->firstCardInStack.color*/tcpClient->cardsInStack.back().color)) + "\t" + QString::fromStdString(this->convertCardValue(/*tcpClient->firstCardInStack.value*/tcpClient->cardsInStack.back().value)));
+    ui->handTextEdit->appendPlainText("\t" + QString::fromStdString(this->convertCardValue(tcpClient->cardsInStack.back().color)) + "\t" + QString::fromStdString(this->convertCardValue(tcpClient->cardsInStack.back().value)));
 }
 
 void MainWindow::onNextTurnMessageRecv()
 {
+    ui->moveLogTextEdit->appendPlainText("---Next turn message");
     ui->moveLogTextEdit->appendPlainText("Player " + QString::number(tcpClient->turn) + " moves");
     ui->moveLogTextEdit->appendPlainText(QString::number(tcpClient->cardsForNext) + " cards to take");
     ui->moveLogTextEdit->appendPlainText(QString::number(tcpClient->turnsForNext) + " turns to stop");
+    ui->moveLogTextEdit->appendPlainText("");
 
     ui->playerMoveEdit->setText(QString::fromStdString(*(tcpClient->playersAtSlots[tcpClient->turn])));
 }
 
 void MainWindow::onPickCardsMessageRecv()
 {
+    ui->moveLogTextEdit->appendPlainText("---Pick cards message");
     if(tcpClient->slot == tcpClient->slotNumber) {
         ui->moveLogTextEdit->appendPlainText("You are taking " + QString::number(tcpClient->count) + " cards");
+
         // updating hand
         this->onStartGameMessageRecv();
     }
     else {
         ui->moveLogTextEdit->appendPlainText("Player at slot " + QString::number(tcpClient->slot) + " takes " + QString::number(tcpClient->count) + " cards");
     }
+    ui->moveLogTextEdit->appendPlainText("");
 
 }
 
@@ -216,11 +224,12 @@ void MainWindow::onInvalidMoveMessageRecv()
 
 void MainWindow::onGameEndMessageRecv()
 {
-    ui->plainTextEdit->appendPlainText("Game ended");
+    ui->plainTextEdit->appendPlainText("---Game ended");
 }
 
 void MainWindow::onPlayerLeftMessageRecv()
 {
+    ui->plainTextEdit->appendPlainText("---Player left message received");
     ui->plainTextEdit->appendPlainText("Player " + QString::fromUtf8(tcpClient->nameOfLastLeftPlayer) + " at slot " + QString::number(tcpClient->slotOfLastLeftPlayer) + " left");
 
     int numberOfOtherPlayersInGame = 0;
@@ -235,6 +244,7 @@ void MainWindow::onPlayerLeftMessageRecv()
     else {
         ui->plainTextEdit->appendPlainText("There are no othre players in game");
     }
+    ui->plainTextEdit->appendPlainText("");
 }
 
 void MainWindow::onGameListMessageRecv()
@@ -243,6 +253,7 @@ void MainWindow::onGameListMessageRecv()
     QString playersCount;
     QString playerName;
 
+    ui->plainTextEdit->appendPlainText("---Game list message received");
     for(int i=0; i<50; i++) {
         if(tcpClient->gameExists[i]) {
             gameId = QString::number(tcpClient->gameId[i]);
@@ -267,6 +278,7 @@ void MainWindow::onGameListMessageRecv()
 
 void MainWindow::onMoveMessageRecv()
 {
+    ui->moveLogTextEdit->appendPlainText("---Move message received");
     ui->moveLogTextEdit->clear();
     ui->moveLogTextEdit->appendPlainText("Player played " + QString::number(tcpClient->playedCardsCount) + " cards");
     for(int i=0; i<tcpClient->playedCardsCount; i++) {
@@ -282,6 +294,7 @@ void MainWindow::onMoveMessageRecv()
     else
         ui->moveLogTextEdit->appendPlainText("No requests about value");
 
+    ui->moveLogTextEdit->appendPlainText("");
     // tomporaryly call to update card in stock
     this->onStartGameMessageRecv();
 }

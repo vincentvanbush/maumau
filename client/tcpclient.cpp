@@ -44,6 +44,7 @@ void TcpClient::readMessage()
         break;
     case CANNOT_LEAVE:
         this->cannotLeaveSignal();
+        break;
     case JOIN_OK:
         this->joinOKSignalHandle(gameMessage.message.join_ok);
         this->joinOKSignal();
@@ -63,6 +64,7 @@ void TcpClient::readMessage()
     case PICK_CARDS:
         this->pickCardsSignalHandle(gameMessage.message.pick_cards);
         this->pickCardsSignal();
+        break;
     case INVALID_MOVE:
         this->invalidMoveSignal();
         break;
@@ -77,6 +79,7 @@ void TcpClient::readMessage()
     case GAME_LIST:
         this->gameListSignalHandle(gameMessage.message.game_list);
         this->gameListSignal();
+        break;
     case MOVE:
         this->moveSignalHandle(gameMessage.message.move);
         this->moveSignal();
@@ -374,18 +377,18 @@ void TcpClient::pickCardsSignalHandle(struct pick_cards_msg pickCards)
     this->slot = pickCards.slot;
     this->count = pickCards.count;
     if(this->slot == this->slotNumber) {
-//        for(int i=0; i<this->count; i++) {
-//            this->cardsInHand.push_back(pickCards.cards[i]);
-//        }
-//        this->numberOfCardsInHand = this->cardsInHand.size();
-
-        // temporary version
-        int i=0;
-        while(pickCards.cards[i].color != 0) {
+        for(int i=0; i<this->count; i++) {
             this->cardsInHand.push_back(pickCards.cards[i]);
-            i++;
         }
         this->numberOfCardsInHand = this->cardsInHand.size();
+
+        // temporary version
+//        int i=0;
+//        while(pickCards.cards[i].color != 0) {
+//            this->cardsInHand.push_back(pickCards.cards[i]);
+//            i++;
+//        }
+//        this->numberOfCardsInHand = this->cardsInHand.size();
     }
 }
 

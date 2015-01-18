@@ -17,7 +17,7 @@ TcpClient::TcpClient()
     this->tcpSocket = new QTcpSocket(this);
     connect(tcpSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(socketError(QAbstractSocket::SocketError)));
     connect(tcpSocket, SIGNAL(connected()), this, SLOT(socketConnected()));
-    connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(readMessage()));
+    connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(readMessage()), Qt::DirectConnection);
     tcpSocket->connectToHost(this->serverIPAddress, this->serverPort);
 
 }
@@ -34,6 +34,9 @@ void TcpClient::readMessage()
     tcpSocket->read((char *) &gameMessage, (qint64) sizeof(gameMessage));
 
     int messageType = gameMessage.msg_type;
+
+
+    qDebug() << "Message type: " + QString::number(messageType);
 
     switch(messageType) {
     case CANNOT_JOIN:

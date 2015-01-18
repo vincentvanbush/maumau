@@ -70,6 +70,7 @@ void MainWindow::onLeaveGameButtonClicked()
 
 void MainWindow::onSendMoveButtonClicked()
 {
+    ui->moveLogTextEdit->appendPlainText("----------------------");
     short playedCardsCount = 0;
     card playedCards[4];
     for(int i=0; i<4; i++) {
@@ -193,7 +194,7 @@ void MainWindow::onStartGameMessageRecv()
 void MainWindow::onNextTurnMessageRecv()
 {
     ui->moveLogTextEdit->appendPlainText("---Next turn message");
-    ui->moveLogTextEdit->appendPlainText("Player " + QString::number(tcpClient->turn) + " moves");
+    ui->moveLogTextEdit->appendPlainText("Player " + QString::number(tcpClient->turn) + " move");
     ui->moveLogTextEdit->appendPlainText(QString::number(tcpClient->cardsForNext) + " cards to take");
     ui->moveLogTextEdit->appendPlainText(QString::number(tcpClient->turnsForNext) + " turns to stop");
     ui->moveLogTextEdit->appendPlainText("");
@@ -279,7 +280,7 @@ void MainWindow::onGameListMessageRecv()
 void MainWindow::onMoveMessageRecv()
 {
     ui->moveLogTextEdit->appendPlainText("---Move message received");
-    ui->moveLogTextEdit->clear();
+    //ui->moveLogTextEdit->clear();
     ui->moveLogTextEdit->appendPlainText("Player played " + QString::number(tcpClient->playedCardsCount) + " cards");
     for(int i=0; i<tcpClient->playedCardsCount; i++) {
         ui->moveLogTextEdit->appendPlainText(QString::fromStdString(this->convertCardValue(tcpClient->playedCards[i].color)) + "\t" +

@@ -5,6 +5,7 @@
 #include <deque>
 #include <vector>
 #include <netinet/in.h>
+#include <json/json.h>
 
 struct player_info {
 	int token;
@@ -40,7 +41,7 @@ short player_join_game (struct player_info*, struct game_info*);
 
 void deal_cards (struct game_info*);
 
-bool validate_move (struct game_msg*, struct game_info*);
+bool validate_move (Json::Value, struct game_info*);
 
 bool card_equals (struct card, struct card);
 
@@ -48,7 +49,7 @@ bool is_finished (struct game_info*);
 
 std::deque <struct card> pick_n_cards (struct game_info*, short, short);
 
-std::deque <struct card> update_game_state (struct move_msg*, struct game_info*);
+std::deque <struct card> update_game_state (Json::Value, struct game_info*);
 
 short finished_players (struct game_info*);
 

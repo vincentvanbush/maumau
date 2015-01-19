@@ -24,56 +24,63 @@ int cl_socket = create_socket();
 int game_token, player_token, game_id, slot_number;
 
 void *recv_loop(void *arg) {
-	struct game_msg msg_buffer;
-	while (1) {
-		socklen_t fromlen = sizeof srv_addr;
-		if (recvfrom (cl_socket, &msg_buffer, sizeof msg_buffer, 0, (struct sockaddr*) &srv_addr, &fromlen) < 0) {
-			perror ("Error receiving data on socket");
-			exit (EXIT_FAILURE);
-		}
-		else {
-			printf("Received message from server, type: %d\n", msg_buffer.msg_type);
-		}
+	int msg_len, msg_type;
+	Json::Value msg_buffer;
 
-		if (msg_buffer.msg_type == GAME_LIST) {
+	while (recv (cl_socket, &msg_len, sizeof msg_len, 0) > 0) {
+		fprintf (stderr, "[Socket %d] Receiving message of length %d \n", cl_socket, msg_len);
+		msg_buffer = recv_message(cl_socket, msg_len);
+
+
+		if (msg_buffer["msg_type"] == GAME_LIST) {
 			printf("Game list...\n");
-			struct game_list_msg game_list = msg_buffer.message.game_list;
-			for (int i = 0; i < MAX_GAME_NUM; i++) {
-				if (game_list . game_exists[i]) {
-					printf("id=%d\tplayers_count=%d\tstarted=%s ",
-						game_list . game_id[i],
-						game_list . players_count[i],
-						game_list . started[i] ? "aktywna" : "nieaktywna"
+
+			for (int i = 0; i < msg_buffer["games"].size(); i++) {
+				if (!msg_buffer["games"][i].isNull()) {
+					printf ("id = %d \t active = %s \t players_count = %d \t ",
+						msg_buffer["games"][i]["id"].asInt(),
+						msg_buffer["games"][i]["started"].asBool() ? "yes" : "no",
+						msg_buffer["games"][i]["players_count"].asInt()
 					);
-					if (game_list.game_exists[i]) {
-						for (int j = 0; j < game_list.players_count[i]; j++) {
-							printf("%s ", game_list.player_nick[i][j]);
-						}
-						printf("\n");
+					for (int j = 0; j < msg_buffer["games"][i]["players_count"].asInt(); j++) {
+						printf("%s ", msg_buffer["games"][i]["player_nicks"][j].asCString());
 					}
+					printf ("\n");
 				}
+
 			}
+
 		}
 
-		else if (msg_buffer.msg_type == JOIN_OK) {
-			struct join_ok_msg join_ok = msg_buffer.message.join_ok;
-			player_token = join_ok.player_token;
-			game_token = join_ok.game_token;
-			slot_number = join_ok.slot_number;
+
+		if (msg_buffer["msg_type"] == JOIN_OK) {
+			player_token = msg_buffer["player_token"].asInt();
+			game_token = msg_buffer["game_token"].asInt();
+			slot_number = msg_buffer["slot_number"].asInt();
 			printf("Player token: %d\nGame token: %d\nSlot: %d\n", player_token, game_token, slot_number);
 		}
 
-		else if (msg_buffer.msg_type == START_GAME) {
-			struct start_game_msg start_game = msg_buffer.message.start_game;
-			std::deque <struct card> cards(start_game.player_cards, start_game.player_cards + 5);
+		else if (msg_buffer["msg_type"] == START_GAME) {
+			Json::Value cards_node = msg_buffer["player_cards"];
+			std::deque <struct card> cards;
+			for (int i = 0; i < cards_node.size(); i++) {
+				Json::Value card_node = cards_node[i];
+				struct card card;
+				card.color = card_node["color"].asInt();
+				card.value = card_node["value"].asInt();
+				cards.push_back(card);
+			}
+
 			printf("Your cards:\n");
 			for (int i = 0; i < cards.size(); i++) {
 				printf("\t%d %d\n", cards[i].value, cards[i].color);
 			}
 			printf("Top card:\n");
-			printf("\t%d %d\n", start_game.first_card_in_stack.value, start_game.first_card_in_stack.color);
+			printf("\t%d %d\n", msg_buffer["first_card_in_stack"]["value"].asInt(), msg_buffer["first_card_in_stack"]["color"].asInt());
 		}
+
 	}
+
 }
 
 int main(int argc, char* argv[]) {
@@ -101,60 +108,72 @@ int main(int argc, char* argv[]) {
 
 	while (1) {
 		// define message
-		struct game_msg msg_buffer;
+		Json::Value msg_buffer;
 		printf("Enter message type: ");
-		scanf("%hu", &msg_buffer.msg_type);
+		int msg_type;
+		scanf("%d", &msg_type);
+		msg_buffer["msg_type"] = msg_type;
 
-		if (msg_buffer.msg_type == JOIN_GAME) {
+		if (msg_buffer["msg_type"] == JOIN_GAME) {
+			char player_name[30];
+			int game_id;
 			printf("Enter player name ");
-			scanf("%s", &msg_buffer.message.join_game.player_name);
+			scanf("%s", player_name);
 			printf("Enter game id ");
-			scanf("%d", &msg_buffer.message.join_game.game_id);
-			game_id = msg_buffer.message.join_game.game_id;
+			scanf("%d", &game_id);
+			msg_buffer["player_name"] = player_name;
+			msg_buffer["game_id"] = game_id;
 		}
 
-		else if (msg_buffer.msg_type == READY) {
-			msg_buffer.token = player_token;
-			msg_buffer.game_token = game_token;
-			msg_buffer.game_id = game_id;
+
+
+		else if (msg_buffer["msg_type"] == READY) {
+			msg_buffer["player_token"] = player_token;
+			msg_buffer["game_token"] = game_token;
+			msg_buffer["game_id"] = game_id;
 		}
 
-		else if (msg_buffer.msg_type == LEAVE_GAME) {
-			msg_buffer.token = player_token;
-			msg_buffer.game_token = game_token;
-			msg_buffer.game_id = game_id;
-			msg_buffer.message.leave_game.slot = slot_number;
+
+		else if (msg_buffer["msg_type"] == LEAVE_GAME) {
+			msg_buffer["player_token"] = player_token;
+			msg_buffer["game_token"] = game_token;
+			msg_buffer["game_id"] = game_id;
+			msg_buffer["slot"] = slot_number;
 		}
 
-		else if (msg_buffer.msg_type == MOVE) {
-			msg_buffer.token = player_token;
-			msg_buffer.game_token = game_token;
-			msg_buffer.game_id = game_id;
 
+
+		else if (msg_buffer["msg_type"] == MOVE) {
+			msg_buffer["player_token"] = player_token;
+			msg_buffer["game_token"] = game_token;
+			msg_buffer["game_id"] = game_id;
+
+			int played_cards_count;
 			printf("Enter number of played cards ");
-			scanf("%d", &msg_buffer.message.move.played_cards_count);
+			scanf("%d", &played_cards_count);
+			msg_buffer["played_cards_count"] = played_cards_count;
 
-			for (int i = 0; i < msg_buffer.message.move.played_cards_count; i++) {
+			for (int i = 0; i < played_cards_count; i++) {
 				printf("Enter card %d value and color ", i);
-				scanf("%d %d", &msg_buffer.message.move.played_cards[i].value, &msg_buffer.message.move.played_cards[i].color);
+				int value, color;
+				scanf("%d %d",&value, &color);
+				msg_buffer["played_cards"][i]["value"] = value;
+				msg_buffer["played_cards"][i]["color"] = color;
+
 			}
 
+			int color_request, value_request;
 			printf("Enter color request ");
-			scanf("%d", &msg_buffer.message.move.color_request);
+			scanf("%d", &color_request);
 			printf("Enter value request ");
-			scanf("%d", &msg_buffer.message.move.value_request);
-
+			scanf("%d", &value_request);
+			msg_buffer["color_request"] = color_request;
+			msg_buffer["value_request"] = value_request;
 
 		}
 
 
-		socklen_t tolen = sizeof srv_addr;
-		int sent;
-		if ((sent = sendto (cl_socket, &msg_buffer, sizeof msg_buffer, 0, (struct sockaddr*) &srv_addr, tolen)) < 0) {
-			perror ("Error sending data to socket");
-			exit (EXIT_FAILURE);
-		}
-		else printf("Sent %d bytes\n", sent);
+		send_message (cl_socket, msg_buffer);
 
 	}
 

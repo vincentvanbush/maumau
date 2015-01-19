@@ -85,7 +85,10 @@ struct card top_card (struct game_info* game) {
 	return game -> played_cards.front();
 }
 
-bool validate_move (struct game_msg* move_msg, struct game_info* game) {
+bool validate_move (Json::Value move_msg, struct game_info* game) {
+	int played_cards_count = move_msg["played_cards_count"].asInt();
+	fprintf (stderr, "----------- (V) PLAYED CARDS COUNT: %d\n", played_cards_count);
+
 	// if game is null
 	if (game == nullptr) {
 		puts ("Game is null");
@@ -93,16 +96,21 @@ bool validate_move (struct game_msg* move_msg, struct game_info* game) {
 	}
 
 	// if played cards count > 4, message is rubbish!
-	if (move_msg -> message.move.played_cards_count > 4) {
+	if (move_msg["played_cards_count"] > 4) {
 		puts ("Malformed message, cards count > 4");
 		return false;
 	}
 
 	struct card top = top_card (game);
-	struct move_msg &move = move_msg -> message.move;
-	std::vector <struct card> played_cards (move.played_cards, move.played_cards + move.played_cards_count);
-	int player_token = move_msg -> token;
-	int game_token = move_msg -> game_token;
+	std::vector <struct card> played_cards;
+	for (int i = 0; i < move_msg["played_cards_count"].asInt(); i++) {
+		struct card card;
+		card.color = move_msg["played_cards"][i]["color"].asInt();
+		card.value = move_msg["played_cards"][i]["value"].asInt();
+		played_cards.push_back (card);
+	}
+	int player_token = move_msg["player_token"].asInt();
+	int game_token = move_msg["game_token"].asInt();
 
 	// Check if game is started
 	if (!game -> started) {
@@ -130,6 +138,7 @@ bool validate_move (struct game_msg* move_msg, struct game_info* game) {
 
 	// Check if player's token equals the token of player at current turn slot
 	if (player_token != game -> players[game -> turn] -> token) {
+		printf ("Expected player token %d, got %d \n", game -> players[game -> turn] -> token, player_token);
 		puts ("Wrong player token");
 		return false;
 	}
@@ -202,7 +211,7 @@ bool validate_move (struct game_msg* move_msg, struct game_info* game) {
 			}
 		}
 		// If making a color request...
-		else if (move.color_request != 0) {
+		else if (move_msg["color_request"] != 0) {
 			// played card has to be ace
 			if (played_cards[0].value != ACE) {
 				puts ("Player requests a color but doesn't give an ace");
@@ -210,7 +219,7 @@ bool validate_move (struct game_msg* move_msg, struct game_info* game) {
 			}
 		}
 		// If making a value request
-		else if (move.value_request != 0) {
+		else if (move_msg["value_request"] != 0) {
 			// played card has to be jack
 			if (played_cards[0].value != JACK)
 				puts ("Player requests a value but doesn't give a jack");
@@ -227,7 +236,7 @@ bool card_equals (struct card a, struct card b) {
 	return false;
 }
 
-std::deque <struct card> update_game_state(struct move_msg* move, struct game_info* game) {
+std::deque <struct card> update_game_state(Json::Value move, struct game_info* game) {
 	std::deque <struct card> picked_cards;
 
 	// Get the turn of the move's player. Thus, the function should be executed
@@ -241,8 +250,12 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 		game -> color_request = 0;
 	}
 
+	int played_cards_count = move["played_cards_count"].asInt();
+	fprintf (stderr, "----------- (U) PLAYED CARDS COUNT: %d\n", played_cards_count);
+
+
 	// If no card played
-	if (move -> played_cards_count == 0) {
+	if (played_cards_count == 0) {
 		short cards_to_pick = game -> cards_to_pick;
 		short turns_to_miss = game -> turns_to_miss;
 		short picked;
@@ -265,9 +278,8 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 	}
 	// If one or more cards played
 	else {
-		short value = move -> played_cards[0].value;
-		short first_color = move -> played_cards[0].color;
-		short card_count = move -> played_cards_count;
+		short value = move["played_cards"][0]["value"].asInt();
+		short first_color = move["played_cards"][0]["color"].asInt();
 		if (value == KING) { // eat 5 cards
 			if (first_color == HEART) {
 				game -> cards_to_pick += 5;
@@ -277,20 +289,20 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 			}
 		}
 		else if (value == JACK) { // request value
-			game -> value_request = move -> value_request;
-			if (move -> value_request != 0)
+			game -> value_request = move["value_request"].asInt();
+			if (move["value_request"].asInt() != 0)
 				game -> request_ttl = players_still_in_game (game);
 		}
 		else if (value == ACE) { // request color
-			game -> color_request = move -> color_request;
-			if (move -> value_request != 0)
+			game -> color_request = move["color_request"].asInt();
+			if (move["color_request"].asInt() != 0)
 				game -> request_ttl = players_still_in_game (game);
 		}
 		else if (value == 4) { // miss a turn
-			game -> turns_to_miss += card_count;
+			game -> turns_to_miss += played_cards_count;
 		}
 		else if (value == 3 || value == 2) { // eat 3 or 2 cards
-			game -> cards_to_pick += value * card_count;
+			game -> cards_to_pick += value * played_cards_count;
 		}
 		else { // normal card
 
@@ -300,20 +312,28 @@ std::deque <struct card> update_game_state(struct move_msg* move, struct game_in
 
 	// Increment the turn modulo 4. Repeat if the selected player has finished
 	do
-		if (move -> played_cards_count > 0 && move -> played_cards[0].value == KING
-			&& move -> played_cards[0].color == PIKE)
+		if (move["played_cards_count"].asInt() > 0 && move["played_cards"][0]["value"].asInt() == KING
+			&& move["played_cards"][0]["color"].asInt() == PIKE)
 			(--game -> turn) %= game -> players.size();
 		else
 			(++game -> turn) %= game -> players.size();
 	while (game -> players[game -> turn] -> finished);
 
+	printf ("TRANSFERRING (player played %d cards) \n", played_cards_count);
 	// Transfer move's played cards to the front of the structure in game
 	std::deque <struct card> *cards_in_game = &game -> played_cards;
-	for (int i = 0; i < move -> played_cards_count; i++) {
-		cards_in_game -> push_front(move -> played_cards[i]);
+	std::deque <struct card> move_cards;
+	for (int i = 0; i < played_cards_count; i++) {
+		struct card card;
+		card.color = move ["played_cards"][i]["color"].asInt();
+		card.value = move ["played_cards"][i]["value"].asInt();
+		printf ("Card %d %d \n", card.value, card.color);
+
+		cards_in_game -> push_front(card);
+		move_cards.push_back(card);
 	}
 	std::vector <struct card> &player_cards = player -> cards;
-	std::deque <struct card> move_cards(move -> played_cards, move -> played_cards + move -> played_cards_count);
+
 	for (int i = 0; i < move_cards.size(); i++) {
 		for (int j = 0; j < player_cards.size(); j++) {
 			if (card_equals (move_cards[i], player_cards[j])) {

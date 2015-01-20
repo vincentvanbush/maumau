@@ -2,11 +2,6 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-//#include <QtDeclarative/qdeclarativeview.h>
-#include <QVBoxLayout>
-
-//#include <QtQuick/qquickview.h>
-
 
 #include "tcpclient.h"
 #include "../messages.h"

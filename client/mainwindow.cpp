@@ -1,10 +1,3 @@
-#include <QQuickView>
-//#include <QtDeclarative/QDeclarativeView>
-//#include <QtDeclarative/QDeclarativeComponent>
-//#include <QtDeclarative/QDeclarativeItem>
-#include <QtQuickWidgets/QQuickWidget>
-#include <QQmlEngine>
-#include <QQmlComponent>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
@@ -24,7 +17,7 @@ MainWindow::MainWindow(QWidget *parent) :
     //QWidget *container = QWidget::createWindowContainer(view, this);
 
 
-    QQuickWidget *quickWidget = new QQuickWidget(QUrl::fromLocalFile("../client/interface.qml"),this);
+    // QQuickWidget *quickWidget = new QQuickWidget(QUrl::fromLocalFile("../client/interface.qml"),this);
 
 
     //quickWidget->setWindow
@@ -36,9 +29,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
     //view->setSource(QUrl::fromLocalFile("../client/interface.qml"));
    // ui->verticalLayout->activateRecursiveHelper();
-    quickWidget->setProperty("width" , 80);
-    quickWidget->move(50,0);
-    ui->verticalLayout->addWidget(quickWidget);
+    // quickWidget->setProperty("width" , 80);
+    // quickWidget->move(50,0);
+    // ui->verticalLayout->addWidget(quickWidget);
 
 
 

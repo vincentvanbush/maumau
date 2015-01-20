@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui network quick declarative quickwidgets
+QT       += core gui network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -14,12 +14,17 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    tcpclient.cpp
+    tcpclient.cpp \
+    gamewindow.cpp \
+    clickablelabel.cpp
 
 HEADERS  += mainwindow.h \
-    tcpclient.h
+    tcpclient.h \
+    gamewindow.h \
+    cardlabel.h
 
-FORMS    += mainwindow.ui
+FORMS    += mainwindow.ui \
+    gamewindow.ui
 
 CONFIG += c++11
 
@@ -29,3 +34,6 @@ DISTFILES += \
 unix:!macx: LIBS += -ljsoncpp
 
 INCLUDEPATH += /usr/include/jsoncpp/
+
+RESOURCES += \
+    res.qrc

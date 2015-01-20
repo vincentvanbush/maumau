@@ -2,6 +2,11 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+//#include <QtDeclarative/qdeclarativeview.h>
+#include <QVBoxLayout>
+
+//#include <QtQuick/qquickview.h>
+
 
 #include "tcpclient.h"
 #include "../messages.h"
@@ -18,6 +23,12 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     TcpClient *tcpClient;
+
+//    QDeclarativeView *qmlView;
+//    QWidget *widget;
+//    QVBoxLayout * layout;
+
+
     
 //private slots:
 public slots:

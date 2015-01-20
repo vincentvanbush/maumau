@@ -1,3 +1,10 @@
+#include <QQuickView>
+//#include <QtDeclarative/QDeclarativeView>
+//#include <QtDeclarative/QDeclarativeComponent>
+//#include <QtDeclarative/QDeclarativeItem>
+#include <QtQuickWidgets/QQuickWidget>
+#include <QQmlEngine>
+#include <QQmlComponent>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
@@ -6,6 +13,76 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+//    this->qmlView = new QDeclarativeView();
+//    this->qmlView->setSource(QUrl::fromLocalFile("interface.qml"));
+//    this->widget = this;
+//    this->layout = new QVBoxLayout(this->widget);
+//    this->layout->addWidget(this->qmlView);
+
+    //QQuickView *view = new QQuickView();
+    //QWidget *container = QWidget::createWindowContainer(view, this);
+
+
+    QQuickWidget *quickWidget = new QQuickWidget(QUrl::fromLocalFile("../client/interface.qml"),this);
+
+
+    //quickWidget->setWindow
+    //quickWidget->rootContext()->setContextProperty("p",50);
+    //QQuickWidget *quickWidget = new QQuickWidget(QUrl(QStringLiteral("../client/interface.qml")),container);
+//    container->setMinimumSize(600,175);
+//    container->setMaximumSize(600,175);
+//    /container->setFocusPolicy(Qt::TabFocus);
+
+    //view->setSource(QUrl::fromLocalFile("../client/interface.qml"));
+   // ui->verticalLayout->activateRecursiveHelper();
+    quickWidget->setProperty("width" , 80);
+    quickWidget->move(50,0);
+    ui->verticalLayout->addWidget(quickWidget);
+
+
+
+
+//    QDeclarativeView *view = new QDeclarativeView();
+
+//    view->setSource(QUrl::fromLocalFile("../client/interface.qml"));
+//    //view->show();
+
+//    QDeclarativeComponent* component = new QDeclarativeComponent(view->engine(), QUrl::fromLocalFile("../client/interface.qml"));
+//    //QWidget *el = new QWidgetItem()
+
+//    QDeclarativeItem *myDialog = qobject_cast<QDeclarativeItem*>(component->create());
+//    myDialog->setParentItem(qobject_cast<QDeclarativeItem*>(view->rootObject()));
+//    view->show();
+
+
+
+//    QObject *object = (QObject*)view->rootObject();
+//    QWidget *container = QWidget::createWindowContainer(view, this);
+//    container->setMinimumSize(600,175);
+//    container->setMaximumSize(600,175);
+//    container->setFocusPolicy(Qt::TabFocus);
+//    ui->verticalLayout->addWidget(object);
+
+
+
+
+
+    //QQmlComponent component(view->engine(), QUrl::fromLocalFile("../client/interface.qml"));
+    //QObject *object = component.create();
+
+
+
+//    QQmlEngine engine;
+//    QQmlComponent component(&engine, QUrl::fromLocalFile("../client/interface.qml"));
+//    QWidget *object = component.create();
+
+
+//    QWidget *item = qobject_cast<QWidget*>(object);
+//    ui->verticalLayout->addWidget(item);
+
+
+
     tcpClient = new TcpClient();
 
     // signals from interface

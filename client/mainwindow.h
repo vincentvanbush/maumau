@@ -19,16 +19,12 @@ public:
     ~MainWindow();
     TcpClient *tcpClient;
 
-//    QDeclarativeView *qmlView;
-//    QWidget *widget;
-//    QVBoxLayout * layout;
-
-
     
 //private slots:
 public slots:
     void onRequestGamesButtonClicked();
     void onJoinGameButtonClicked();
+    void onNewGameButtonClicked();
     void onReadyButtonClicked();
     void onLeaveGameButtonClicked();
     void onSendMoveButtonClicked();
@@ -57,6 +53,18 @@ private:
     std::string convertCardValue(int);
     short readRequest();
     std::vector<card> *readCards();
+
+    QStandardItemModel model;
+
+    QModelIndex modelIndex;
+
+    QStandardItem *gamesIds[50];
+    QStandardItem *playerNames[50][4];
+    QStandardItem *gameStarted[50];
+
+    QStringList horizontalHeader;
+
+    void fillGamesTable();
 
 
 };

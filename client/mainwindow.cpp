@@ -14,82 +14,25 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-//    this->qmlView = new QDeclarativeView();
-//    this->qmlView->setSource(QUrl::fromLocalFile("interface.qml"));
-//    this->widget = this;
-//    this->layout = new QVBoxLayout(this->widget);
-//    this->layout->addWidget(this->qmlView);
-
-    //QQuickView *view = new QQuickView();
-    //QWidget *container = QWidget::createWindowContainer(view, this);
-
-
-    QQuickWidget *quickWidget = new QQuickWidget(QUrl::fromLocalFile("../client/interface.qml"),this);
-
-
-    //quickWidget->setWindow
-    //quickWidget->rootContext()->setContextProperty("p",50);
-    //QQuickWidget *quickWidget = new QQuickWidget(QUrl(QStringLiteral("../client/interface.qml")),container);
-//    container->setMinimumSize(600,175);
-//    container->setMaximumSize(600,175);
-//    /container->setFocusPolicy(Qt::TabFocus);
-
-    //view->setSource(QUrl::fromLocalFile("../client/interface.qml"));
-   // ui->verticalLayout->activateRecursiveHelper();
-    quickWidget->setProperty("width" , 80);
-    quickWidget->move(50,0);
-    ui->verticalLayout->addWidget(quickWidget);
-
-
-
-
-//    QDeclarativeView *view = new QDeclarativeView();
-
-//    view->setSource(QUrl::fromLocalFile("../client/interface.qml"));
-//    //view->show();
-
-//    QDeclarativeComponent* component = new QDeclarativeComponent(view->engine(), QUrl::fromLocalFile("../client/interface.qml"));
-//    //QWidget *el = new QWidgetItem()
-
-//    QDeclarativeItem *myDialog = qobject_cast<QDeclarativeItem*>(component->create());
-//    myDialog->setParentItem(qobject_cast<QDeclarativeItem*>(view->rootObject()));
-//    view->show();
-
-
-
-//    QObject *object = (QObject*)view->rootObject();
-//    QWidget *container = QWidget::createWindowContainer(view, this);
-//    container->setMinimumSize(600,175);
-//    container->setMaximumSize(600,175);
-//    container->setFocusPolicy(Qt::TabFocus);
-//    ui->verticalLayout->addWidget(object);
-
-
-
-
-
-    //QQmlComponent component(view->engine(), QUrl::fromLocalFile("../client/interface.qml"));
-    //QObject *object = component.create();
-
-
-
-//    QQmlEngine engine;
-//    QQmlComponent component(&engine, QUrl::fromLocalFile("../client/interface.qml"));
-//    QWidget *object = component.create();
-
-
-//    QWidget *item = qobject_cast<QWidget*>(object);
-//    ui->verticalLayout->addWidget(item);
-
-
-
     tcpClient = new TcpClient();
+
+    for(int i=0; i<50; i++) {
+        this->gamesIds[i] = nullptr;
+        for(int j=0; j<4; j++)
+            this->playerNames[i][j] = nullptr;
+        this->gameStarted[i] = nullptr;
+    }
+    this->fillGamesTable();
+
+
+
 
     // signals from interface
     connect(ui->requestGamesButton, SIGNAL(clicked()), this, SLOT(onRequestGamesButtonClicked()));
     connect(ui->joinGameButton, SIGNAL(clicked()), this, SLOT(onJoinGameButtonClicked()));
     connect(ui->readyButton, SIGNAL(clicked()), this, SLOT(onReadyButtonClicked()));
     connect(ui->leaveGameButton, SIGNAL(clicked()), this, SLOT(onLeaveGameButtonClicked()));
+    connect(ui->newGameButton, SIGNAL(clicked()), this, SLOT(onNewGameButtonClicked()));
 
     //temportary
     connect(ui->sendMoveButton, SIGNAL(clicked()), this, SLOT(onSendMoveButtonClicked()));
@@ -123,14 +66,59 @@ void MainWindow::onRequestGamesButtonClicked()
 
 }
 
+void MainWindow::onNewGameButtonClicked()
+{
+    QString name = ui->setNameEdit->text();
+    std::string playerName = name.toStdString();
+
+    int gameID = 0;
+    int i=0;
+    for(i; i<50; i++) {
+        if(!tcpClient->gameExists[i])
+            break;
+    }
+    if(i==50) {
+        qDebug() << "There are no empty slots for new game";
+    }
+    else {
+        if(playerName != "") {
+            gameID = i;
+            tcpClient->sendJoinGameMessage(playerName, gameID);
+        }
+        else {
+            qDebug() << "You need to type your nick";
+        }
+    }
+}
+
 void MainWindow::onJoinGameButtonClicked()
 {
     QString name = ui->setNameEdit->text();
     std::string playerName = name.toStdString();
-    QString id = ui->setGameIdEdit->text();
-    int gameID = id.toInt();
-    ui->plainTextEdit->appendPlainText("---Sending request to join game");
-    tcpClient->sendJoinGameMessage(playerName, gameID);
+
+    int gameID;
+
+    QModelIndexList ind = ui->gamesListView->selectionModel()->selectedRows();
+    if(ind.size() != 0) {
+        QModelIndex index = this->model.index(ind.at(0).row(),0,QModelIndex());
+        if(playerName != "") {
+            gameID = ui->gamesListView->model()->data(index).toString().toInt();
+            if(tcpClient->playersCount[gameID] < 4) {
+                tcpClient->sendJoinGameMessage(playerName, gameID);
+            }
+            else {
+                qDebug() << "Too many players in this game";
+            }
+
+        }
+        else {
+            qDebug() << "Nie wpisałeś imienia";
+        }
+    }
+    else {
+        qDebug() << "Nie wybrałeś gry do dołączenia";
+    }
+
 }
 
 void MainWindow::onReadyButtonClicked()
@@ -352,6 +340,74 @@ void MainWindow::onGameListMessageRecv()
 
     }
     ui->plainTextEdit->appendPlainText("");
+
+    this->fillGamesTable();
+
+
+
+
+
+}
+
+void MainWindow::fillGamesTable()
+{
+
+    for(int i=0; i<50; i++) {
+        if(this->gamesIds[i] != nullptr) {
+            delete this->gamesIds[i];
+            this->gamesIds[i] = nullptr;
+        }
+        for(int j=0; j<4; j++) {
+            if(this->playerNames[i][j] != nullptr) {
+                delete this->playerNames[i][j];
+                this->playerNames[i][j] = nullptr;
+            }
+        }
+        if(this->gameStarted[i] != nullptr) {
+            delete this->gameStarted[i];
+            this->gameStarted[i] = nullptr;
+        }
+    }
+
+    this->horizontalHeader.clear();
+    this->model.clear();
+
+    this->horizontalHeader.append("Game id");
+    this->horizontalHeader.append("Player 1");
+    this->horizontalHeader.append("Player 2");
+    this->horizontalHeader.append("Player 3");
+    this->horizontalHeader.append("Player 4");
+    this->horizontalHeader.append("Game status");
+
+
+
+    this->model.index(1,1,model.index(0,0));
+    this->model.setHorizontalHeaderLabels(this->horizontalHeader);
+
+    int rowNumber = 0;
+
+    for(int i=0; i<50; i++) {
+        if(this->tcpClient->gameExists[i]) {
+            this->gamesIds[i] = new QStandardItem(QString(QString::number(tcpClient->gameId[i])));
+            this->model.setItem(rowNumber,0,this->gamesIds[i]);
+
+            for(int j=0; j<tcpClient->playersCount[i]; j++) {
+                this->playerNames[i][j] = new QStandardItem(QString(QString::fromUtf8(tcpClient->playerNick[i][j])));
+                this->model.setItem(rowNumber,j+1,this->playerNames[i][j]);
+            }
+
+            if(tcpClient->started[i])
+                this->gameStarted[i] = new QStandardItem(QString("In progress"));
+            else
+                this->gameStarted[i] = new QStandardItem(QString("Not started"));
+            this->model.setItem(rowNumber,5,this->gameStarted[i]);
+            rowNumber++;
+        }
+    }
+
+    ui->gamesListView->setModel(&this->model);
+    ui->gamesListView->resizeRowsToContents();
+    ui->gamesListView->resizeColumnsToContents();
 }
 
 void MainWindow::onMoveMessageRecv()

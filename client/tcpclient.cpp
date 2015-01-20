@@ -3,7 +3,7 @@
 
 TcpClient::TcpClient()
 {
-    this->serverIPAddress = "192.168.0.27";
+    this->serverIPAddress = "127.0.0.1";
     this->serverPort = 1234;
 
     for(int i=0; i<4; i++) {
@@ -12,6 +12,11 @@ TcpClient::TcpClient()
     this->turn = 0;
     this->turnsForNext = 0;
     this->cardsForNext = 0;
+
+    for(int i=0; i<50; i++) {
+        this->gameExists[i] = false;
+        this->started[i] = false;
+    }
 
 
     this->tcpSocket = new QTcpSocket(this);
@@ -235,16 +240,22 @@ void TcpClient::sendMoveMessage(short playedCardsCount, card* playedCards, short
 // methods handling communicates from server
 void TcpClient::gameListSignalHandle(Json::Value& msg)
 {
+    Json::FastWriter writer;
+    std::string txt = writer.write(msg);
+    qDebug() << QString::fromStdString(txt);
     Json::Value &games = msg["games"];
-    for(int i=0; i<games.size(); i++) {
-        gameExists[i] = !games[i].isNull();
-        gameId[i] = games[i]["id"].asInt();
-        playersCount[i] = games[i]["players_count"].asInt();
-        for(int j=0; j<playersCount[i]; j++) {
-            strcpy(playerNick[i][j], games[i]["player_nicks"][j].asCString());
+    std::string gam = writer.write(games);
+    qDebug() << QString::fromStdString(gam);
+    if(!games.isNull())
+        for(unsigned i=0; i<games.size(); i++) {
+            gameExists[i] = !games[i].isNull();
+            gameId[i] = games[i]["id"].asInt();
+            playersCount[i] = games[i]["players_count"].asInt();
+            for(int j=0; j<playersCount[i]; j++) {
+                strcpy(playerNick[i][j], games[i]["player_nicks"][j].asCString());
+            }
+            started[i] = games[i]["started"].asBool();
         }
-        started[i] = games[i]["started"].asBool();
-    }
 }
 
 void TcpClient::joinOKSignalHandle(Json::Value& joinOK)

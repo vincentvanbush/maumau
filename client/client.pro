@@ -25,3 +25,7 @@ CONFIG += c++11
 
 DISTFILES += \
     interface.qml
+
+unix:!macx: LIBS += -ljsoncpp
+
+INCLUDEPATH += /usr/include/jsoncpp/

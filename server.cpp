@@ -28,104 +28,89 @@ int games_num = 0;
 void *client_loop(void *arg) {
 	int rcv_sck = *(int*)arg;
 
-	printf ("Hello, this is the client thread (%d)\n", rcv_sck);
+	printf ("Starting client thread on socket %d\n", rcv_sck);
 	struct game_msg msg_buffer;
 	struct sockaddr_in cl_addr;
 
+	int msg_len;
 
-	while (recv (rcv_sck, &msg_buffer, sizeof msg_buffer, 0) > 0) {
-		int msg_type = msg_buffer.msg_type;
-		printf("(%d) ", msg_type);
+
+	while (recv (rcv_sck, &msg_len, sizeof msg_len, 0) > 0) {
+		// int msg_type = msg_buffer.msg_type;
+		// printf("(%d) ", msg_type);
+		fprintf (stderr, "[Socket %d] Receiving message of length %d \n", rcv_sck, msg_len);
+		Json::Value json_buf;
+		json_buf = recv_message(rcv_sck, msg_len);
+
+		int msg_type = json_buf["msg_type"].asInt();
+		fprintf (stderr, "[Socket %d] Message type: %d \n", rcv_sck, msg_type);
+
 		switch (msg_type) {
 
 		case JOIN_GAME: {
-			printf("Received join game message from %s\n", msg_buffer.message.join_game.player_name);
-			struct join_game_msg msg = msg_buffer.message.join_game;
+			fprintf (stderr, "[Socket %d] Received join game message from %s\n", rcv_sck, json_buf["player_name"].asCString());
 			struct game_info* game;
 
+			int game_id = json_buf["game_id"].asInt();
+			const char *player_name = json_buf["player_name"].asCString();
 
-			if (games[msg.game_id] == nullptr) {
+			if (games[game_id] == nullptr) {
 				// Game does not exist yet, we have to create it
-				printf("--- Game %d does not exist yet\n", msg.game_id);
-				if (games_num > MAX_GAME_NUM - 1 || msg.game_id < 0) {
-					struct game_msg error_msg;
-					error_msg.msg_type = CANNOT_JOIN;
-					if (send (rcv_sck, &error_msg, sizeof error_msg, 0) < 0) {
-						perror ("Error sending CANNOT_JOIN to client socket");
-						exit (EXIT_FAILURE);
-					}
-					else {
-						printf("Sent CANNOT_JOIN to client\n");
-					}
-					break;
+				fprintf (stderr, "[Socket %d] Game %d does not exist yet\n", rcv_sck, game_id);
+				if (games_num > MAX_GAME_NUM - 1 || game_id < 0) {
+					Json::Value error_msg;
+					error_msg["msg_type"] = CANNOT_JOIN;
+					send_message (rcv_sck, error_msg);
 				}
-				game = new_game(msg.game_id);
+				game = new_game(game_id);
 				pthread_mutex_lock(&games_lock);
-				games[msg.game_id] = game;
+				games[game_id] = game;
 				games_num++;
 				pthread_mutex_unlock(&games_lock);
 			}
 			else {
 				// Game exists. Let the player join or send him an error.
-				game = games[msg.game_id];
-				printf("--- %s wants to join game %d\n", msg.player_name, msg.game_id);
+				game = games[game_id];
+
+				printf("--- %s wants to join game %d\n", player_name, game_id);
 				printf("Game id %d has token %d\n", game -> game_id, game -> game_token);
 				if (game -> started || game -> players.size() >= 4) {
 					puts("--- Cannot join this game");
-					struct game_msg error_msg;
-					error_msg.msg_type = CANNOT_JOIN;
-					if (send (rcv_sck, &error_msg, sizeof error_msg, 0) < 0) {
-						perror ("Error sending CANNOT_JOIN to client socket");
-						exit (EXIT_FAILURE);
-					}
-					else {
-						printf("Sent CANNOT_JOIN to client\n");
-					}
+					Json::Value cannot_join_msg;
+					cannot_join_msg["msg_type"] = CANNOT_JOIN;
+					send_message (rcv_sck, cannot_join_msg);
 					break;
 				}
 			}
 
-			struct player_info* player = new_player (msg.player_name);
+			struct player_info* player = new_player ((char*) player_name);
 			pthread_mutex_lock(&games_lock);
 			player_join_game (player, game);
 			pthread_mutex_unlock(&games_lock);
 			player -> socket = rcv_sck;
 
-			struct game_msg player_joined_msg;
-			player_joined_msg.msg_type = PLAYER_JOINED;
-			strcpy(player_joined_msg.message.player_joined.player_name, msg.player_name);
-			player_joined_msg.message.player_joined.slot_number = game -> players.size() - 1;
+			Json::Value player_joined_msg;
+			player_joined_msg["msg_type"] = PLAYER_JOINED;
+			player_joined_msg["player_name"] = json_buf["player_name"].asString();
+			player_joined_msg["slot_number"] = (int) game -> players.size() - 1;
 			for (int i = 0; i < game -> players.size(); i++) {
 				if (game -> players[i] -> socket != rcv_sck) {
-					if (send (game -> players[i] -> socket, &player_joined_msg, sizeof player_joined_msg, 0) < 0) {
-						perror ("Error sending PLAYER_JOINED to client socket");
-						exit (EXIT_FAILURE);
-					}
-					else printf("Sent PLAYER_JOINED to client %s\n", game -> players[i] -> player_name);
+					send_message (game -> players[i] -> socket, player_joined_msg);
 				}
 			}
 
-
-			struct game_msg join_ok_msg;
-			join_ok_msg.msg_type = JOIN_OK;
-			join_ok_msg.message.join_ok.player_token = player -> token;
-			join_ok_msg.message.join_ok.game_token = game -> game_token;
-			join_ok_msg.message.join_ok.slot_number = game -> players.size() - 1;
-
+			Json::Value join_ok_msg;
+			join_ok_msg["msg_type"] = JOIN_OK;
+			join_ok_msg["player_token"] = player -> token;
+			join_ok_msg["game_token"] = game -> game_token;
+			join_ok_msg["slot_number"] = (int) game -> players.size() - 1;
+			join_ok_msg["player_names"] = Json::Value();
 			for (int i = 0; i < game -> players.size(); i++) {
-				join_ok_msg.message.join_ok.slot_taken[i] = true;
-				strcpy(join_ok_msg.message.join_ok.player_name[i], game -> players[i] -> player_name);
-			}
-			for (int i = game -> players.size(); i < 4; i++) {
-				join_ok_msg.message.join_ok.slot_taken[i] = false;
+				join_ok_msg["player_names"][i] = Json::Value(game -> players[i] -> player_name);
 			}
 
 			puts("--- Join OK");
-			if (send (rcv_sck, &join_ok_msg, sizeof join_ok_msg, 0) < 0) {
-				perror ("Error sending JOIN_OK to client socket");
-				exit (EXIT_FAILURE);
-			}
-			else printf("Sent JOIN_OK to client\n");
+			send_message (rcv_sck, join_ok_msg);
 
 		}
 		break;
@@ -133,10 +118,9 @@ void *client_loop(void *arg) {
 		case MOVE: {
 			printf("Received move message\n");
 
-			int player_token = msg_buffer.token;
-			int game_token = msg_buffer.game_token;
-			int game_id = msg_buffer.game_id;
-			struct move_msg move = msg_buffer.message.move;
+			int player_token = json_buf["player_token"].asInt();
+			int game_token = json_buf["game_token"].asInt();
+			int game_id = json_buf["game_id"].asInt();
 
 			struct game_info* game;
 			bool valid_move;
@@ -147,7 +131,7 @@ void *client_loop(void *arg) {
 			}
 			else {
 				game = games[game_id];
-				valid_move = validate_move (&msg_buffer, games[game_id]);
+				valid_move = validate_move (json_buf, games[game_id]);
 			}
 
 			if (valid_move) {
@@ -155,92 +139,75 @@ void *client_loop(void *arg) {
 
 				std::deque <struct card> cards_picked_up;
 				short sender_turn = game -> turn;
-				cards_picked_up = update_game_state (&move, games[game_id]);
+				cards_picked_up = update_game_state (json_buf, games[game_id]);
 
 				// Broadcast move to others
 				for (int i = 0; i < game -> players.size(); i++) {
 					if (game -> players[i] -> socket != rcv_sck) {
-						if (send (game -> players[i] -> socket, &msg_buffer, sizeof msg_buffer, 0) < 0) {
-							perror ("Error sending MOVE to client socket");
-							exit (EXIT_FAILURE);
-						}
-						else printf("Sent MOVE to client %s\n", game -> players[i] -> player_name);
+						send_message (game -> players[i] -> socket, json_buf);
 					}
 				}
 
 				// If sender has to pick up any cards, broadcast PICK_CARDS to all players.
 				// For the sender only, augment the message with the cards he picks.
 				if (cards_picked_up.size() > 0) for (int i = 0; i < game -> players.size(); i++) {
-					struct game_msg pick_cards_msg;
-					pick_cards_msg.msg_type = PICK_CARDS;
+					Json::Value pick_cards_msg;
 
-					pick_cards_msg.message.pick_cards.slot = sender_turn;
-					pick_cards_msg.message.pick_cards.count = cards_picked_up.size();
+					pick_cards_msg["msg_type"] = PICK_CARDS;
 
+					pick_cards_msg["slot"] = sender_turn;
+					pick_cards_msg["count"] = (int) cards_picked_up.size();
+
+					pick_cards_msg["cards"] = Json::Value();
 					if (player_token == game -> players[sender_turn] -> token) {
-						for (int i = 0; i < cards_picked_up.size(); i++)
-							pick_cards_msg.message.pick_cards.cards[i] = cards_picked_up[i];
+						for (int i = 0; i < cards_picked_up.size(); i++) {
+							pick_cards_msg["cards"][i]["value"] = cards_picked_up[i].value;
+							pick_cards_msg["cards"][i]["color"] = cards_picked_up[i].color;
+						}
 					}
 
-					if (send (game -> players[i] -> socket, &pick_cards_msg, sizeof pick_cards_msg, 0) < 0) {
-						perror ("Error sending PICK_CARDS to client socket");
-						exit (EXIT_FAILURE);
-					}
-					else printf("Sent PICK CARDS to client %s\n", game -> players[i] -> player_name);
+					send_message (game -> players[i] -> socket, pick_cards_msg);
 				}
 
 				// Send NEXT_TURN to all players
 				for (int i = 0; i < game -> players.size(); i++) {
-					struct game_msg next_turn_msg;
-					next_turn_msg.msg_type = NEXT_TURN;
-					struct next_turn_msg* next_turn = &next_turn_msg.message.next_turn;
-					next_turn -> turn = game -> turn;
-
-					if (send (game -> players[i] -> socket, &next_turn_msg, sizeof next_turn_msg, 0) < 0) {
-						perror ("Error sending NEXT_TURN to client socket");
-						exit (EXIT_FAILURE);
-					}
-					else printf("Sent NEXT_TURN to client %s\n", game -> players[i] -> player_name);
+					Json::Value next_turn_msg;
+					next_turn_msg["msg_type"] = NEXT_TURN;
+					next_turn_msg["turn"] = game -> turn;
+					send_message (game -> players[i] -> socket, next_turn_msg);
 				}
 
 				bool game_end = is_finished (game);
 				if (game_end) {
+					int game_id = json_buf["game_id"].asInt();
 					game -> started = false;
+					Json::Value game_end_msg;
+					game_end_msg["msg_type"] = GAME_END;
 
-					struct game_msg game_end_msg;
-					game_end_msg.msg_type = GAME_END;
 					for (int i = 0; i < game -> players.size() && !game -> players[i] -> left; i++) {
-						if (send (game -> players[i] -> socket, &game_end_msg, sizeof game_end_msg, 0) < 0) {
-							perror ("Error sending GAME_END to client socket");
-							exit (EXIT_FAILURE);
-						}
-						else printf("Sent GAME_END to client %s\n", game -> players[i] -> player_name);
+						send_message (game -> players[i] -> socket, game_end_msg);
 					}
 
 					puts ("Deleting game");
-					delete games[msg_buffer.game_id];
-					games[msg_buffer.game_id] = nullptr;
+					delete games[game_id];
+					games[game_id] = nullptr;
 				}
 
 			}
 			else {
-				struct game_msg invalid_move_msg;
-				invalid_move_msg.msg_type = INVALID_MOVE;
-				if (send (rcv_sck, &invalid_move_msg, sizeof invalid_move_msg, 0) < 0) {
-					perror ("Error sending INVALID_MOVE to client socket");
-					exit (EXIT_FAILURE);
-				}
-				else printf("Sent INVALID_MOVE to client \n");
+				Json::Value invalid_move_msg;
+				invalid_move_msg["msg_type"] = INVALID_MOVE;
+				send_message (rcv_sck, invalid_move_msg);
 			}
 		}
 		break;
 
 		case LEAVE_GAME: {
 			printf("Received leave game message\n");
-			int player_token = msg_buffer.token;
-			int game_token = msg_buffer.game_token;
-			int game_id = msg_buffer.game_id;
-			short slot = msg_buffer.message.leave_game.slot;
+			int player_token = json_buf["player_token"].asInt();
+			int game_token = json_buf["game_token"].asInt();
+			int game_id = json_buf["game_id"].asInt();
+			short slot = json_buf["slot"].asInt();
 
 			bool invalid_message = false;
 			struct game_info* game;
@@ -259,43 +226,35 @@ void *client_loop(void *arg) {
 			}
 
 			if (invalid_message) {
-				struct game_msg cannot_leave_msg;
-				cannot_leave_msg.msg_type = CANNOT_LEAVE;
-				if (send (rcv_sck, &cannot_leave_msg, sizeof cannot_leave_msg, 0) < 0) {
-					perror ("Error sending CANNOT_LEAVE to client socket");
-					exit (EXIT_FAILURE);
-				}
-				else printf ("Cannot leave message sent\n");
+				Json::Value cannot_leave_msg;
+				cannot_leave_msg["msg_type"] = CANNOT_LEAVE;
+				send_message (rcv_sck, cannot_leave_msg);
 			}
 			else {
 				game -> players[slot] -> left = true;
 
 				// Broadcast message
-				struct game_msg player_left_msg;
-				player_left_msg.msg_type = PLAYER_LEFT;
-				player_left_msg.message.player_left.slot = slot;
+				Json::Value player_left_msg;
+				player_left_msg["msg_type"] = PLAYER_LEFT;
+				player_left_msg["slot"] = slot;
 
 				for (int i = 0; i < game -> players.size(); i++) {
-					if (i != slot && send (game -> players[i] -> socket, &player_left_msg, sizeof player_left_msg, 0) < 0) {
-						perror ("Error sending PLAYER_LEFT to client socket");
-						exit (EXIT_FAILURE);
+					if (i != slot) {
+						puts ("PLEJER LEFT");
+						send_message(game -> players[i] -> socket, player_left_msg);
 					}
-					else printf("Sent PLAYER_LEFT to client %s\n", game -> players[i] -> player_name);
+
 				}
 
 				if (!game -> players[slot] -> finished) {
-					struct game_msg game_end_msg;
-					game_end_msg.msg_type = GAME_END;
+					Json::Value game_end_msg;
+					game_end_msg["msg_type"] = GAME_END;
 					for (int i = 0; i < game -> players.size(); i++) {
-						if (i != slot && send (game -> players[i] -> socket, &game_end_msg, sizeof game_end_msg, 0) < 0) {
-							perror ("Error sending GAME_END to client socket");
-							exit (EXIT_FAILURE);
-						}
-						else printf("Sent GAME_END to client %s\n", game -> players[i] -> player_name);
-
+						if (i != slot)
+							send_message(game -> players[i] -> socket, game_end_msg);
 						puts ("Deleting game");
-						delete games[msg_buffer.game_id];
-						games[msg_buffer.game_id] = nullptr;
+						delete games[game_id];
+						games[game_id] = nullptr;
 					}
 				}
 			}
@@ -306,20 +265,22 @@ void *client_loop(void *arg) {
 		case READY: {
 
 			printf("Received ready message\n");
-			printf ("Game id = %hu\n", msg_buffer.game_id);
+			int game_id = json_buf["game_id"].asInt();
+			printf ("Game id = %hu\n", game_id);
 
-			int player_token = msg_buffer.token;
-			int game_token = msg_buffer.game_token;
-			struct ready_msg ready_msg = msg_buffer.message.ready;
+			int player_token = json_buf["player_token"].asInt();
+			int game_token = json_buf["game_token"].asInt();
+
+			//struct ready_msg ready_msg = msg_buffer.message.ready;
 			bool invalid_player_token;
 			struct game_info* game;
 			short player_index = -1;
 
-			if (msg_buffer.game_id < 0 || msg_buffer.game_id > 49) {
+			if (game_id < 0 || game_id > MAX_GAME_NUM - 1) {
 				invalid_player_token = true;
 			}
 			else {
-				game = games[msg_buffer.game_id];
+				game = games[game_id];
 				// check if received player token is valid
 				invalid_player_token = true;
 
@@ -337,14 +298,9 @@ void *client_loop(void *arg) {
 
 			if (invalid_player_token) {
 				// send error message to client
-				struct game_msg cannot_ready_msg;
-				cannot_ready_msg.msg_type = CANNOT_READY;
-				if (send (rcv_sck, &cannot_ready_msg, sizeof cannot_ready_msg, 0) < 0) {
-					perror ("Error sending CANNOT_READY to client socket");
-					exit (EXIT_FAILURE);
-				}
-				else printf ("Cannot ready message sent\n");
-
+				Json::Value cannot_ready_msg;
+				cannot_ready_msg["msg_type"] = CANNOT_READY;
+				send_message (rcv_sck, cannot_ready_msg);
 				break;
 			}
 
@@ -369,21 +325,22 @@ void *client_loop(void *arg) {
 						int player_sck = game -> players[i] -> socket;
 						struct player_info* player = game -> players[i];
 
-						struct game_msg start_game_msg;
-						start_game_msg.msg_type = START_GAME;
+						Json::Value start_game_msg;
+						start_game_msg["msg_type"] = START_GAME;
 
-						struct start_game_msg* start_game = &start_game_msg.message.start_game;
-						for (int j = 0; j < player -> cards.size(); j++)
-							start_game -> player_cards[j] = player -> cards[j];
-						start_game -> first_card_in_stack = game -> played_cards.front();
-
-						start_game -> turn = 0;
-
-						if (send (player_sck, &start_game_msg, sizeof start_game_msg, 0) < 0) {
-							perror ("Error sending START_GAME to client socket");
-							exit (EXIT_FAILURE);
+						for (int j = 0; j < player -> cards.size(); j++) {
+							start_game_msg["player_cards"][j]["value"] = player -> cards[j].value;
+							start_game_msg["player_cards"][j]["color"] = player -> cards[j].color;
 						}
-						else printf ("Start game message sent to %s\n", game -> players[i] -> player_name);
+
+						start_game_msg["first_card_in_stack"]["value"] = game -> played_cards.front().value;
+						start_game_msg["first_card_in_stack"]["color"] = game -> played_cards.front().color;
+
+
+						start_game_msg["turn"] = 0;
+
+						send_message (player_sck, start_game_msg);
+
 					}
 
 				}
@@ -396,31 +353,23 @@ void *client_loop(void *arg) {
 		case REQUEST_GAME_LIST: {
 			printf("Received request game list message\n");
 
-			struct game_list_msg game_list;
+			Json::Value game_list_msg;
+			game_list_msg["msg_type"] = GAME_LIST;
+
 			pthread_mutex_lock(&games_lock);
 			for (int i = 0; i < MAX_GAME_NUM; i++) {
-				if (games[i] == nullptr) {
-					game_list.game_exists[i] = false;
-				}
-				else {
-					game_list.game_exists[i] = true;
-					game_list.game_id[i] = games[i] -> game_id;
-					game_list.players_count[i] = games[i] -> players.size();
+				if (games[i] != nullptr) {
+					game_list_msg["games"][i]["id"] = games[i] -> game_id;
+					game_list_msg["games"][i]["players_count"] = (int) games[i] -> players.size();
 					for (int j = 0; j < games[i] -> players.size(); j++) {
-						strcpy (game_list.player_nick[i][j], games[i] -> players[j] -> player_name);
+						game_list_msg["games"][i]["player_nicks"][j] = games[i] -> players[j] -> player_name;
 					}
-					game_list.started[i] = games[i] -> started;
+					game_list_msg["games"][i]["started"] = games[i] -> started;
 				}
 			}
 			pthread_mutex_unlock(&games_lock);
-			struct game_msg game_list_msg;
-			game_list_msg.msg_type = GAME_LIST;
-			game_list_msg.message.game_list = game_list;
-			if (send (rcv_sck, &game_list_msg, sizeof game_list_msg, 0) < 0) {
-				perror ("Error sending GAME_LIST to client socket");
-				exit (EXIT_FAILURE);
-			}
-			else printf("Sent GAME_LIST to client\n");
+
+			send_message (rcv_sck, game_list_msg);
 		}
 		break;
 
@@ -428,7 +377,7 @@ void *client_loop(void *arg) {
 			printf("Unrecognized message type %d\n", msg_type);
 		}
 
-		}
+	}
 	}
 }
 
@@ -443,8 +392,7 @@ void *main_loop(void *arg) {
 	srv_addr = local_address(service_port);
 	int srv_socket = create_socket();
 
-	int optval = 1;
-	setsockopt (srv_socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
+
 
 	bind_socket(srv_socket, srv_addr);
 

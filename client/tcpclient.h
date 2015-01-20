@@ -29,20 +29,22 @@ public:
 
     void updateHandAfterMove(short, card*);
 
+    void sendMessage(Json::Value&);
+    Json::Value& recvMessage(int);
 
-    void cannotJoinSignalHandle(struct cannot_join_msg);
-    void cannotReadySignalHandle(struct cannot_ready_msg);
-    void cannotLeaveSignalHandle(struct cannot_leave_msg);
-    void joinOKSignalHandle(struct join_ok_msg);
-    void playerJoinedSignalHandle(struct player_joined_msg);
-    void startGameSignalHandle(struct start_game_msg);
-    void nextTurnSignalHandle(struct next_turn_msg);
-    void pickCardsSignalHandle(struct pick_cards_msg);
+    void cannotJoinSignalHandle(Json::Value&);
+    void cannotReadySignalHandle(Json::Value&);
+    void cannotLeaveSignalHandle(Json::Value&);
+    void joinOKSignalHandle(Json::Value&);
+    void playerJoinedSignalHandle(Json::Value&);
+    void startGameSignalHandle(Json::Value&);
+    void nextTurnSignalHandle(Json::Value&);
+    void pickCardsSignalHandle(Json::Value&);
     //invalid move
-    void gameEndSignalHandle(struct game_end_msg);
-    void playerLeftSignalHandle(struct player_left_msg);
-    void gameListSignalHandle(struct game_list_msg);
-    void moveSignalHandle(struct move_msg);
+    void gameEndSignalHandle(Json::Value&);
+    void playerLeftSignalHandle(Json::Value&);
+    void gameListSignalHandle(Json::Value&);
+    void moveSignalHandle(Json::Value&);
 
     // information about existing games
     bool gameExists[50];

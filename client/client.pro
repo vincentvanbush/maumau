@@ -22,3 +22,7 @@ HEADERS  += mainwindow.h \
 FORMS    += mainwindow.ui
 
 CONFIG += c++11
+
+unix:!macx: LIBS += -ljsoncpp
+
+INCLUDEPATH += /usr/include/jsoncpp/

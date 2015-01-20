@@ -3,7 +3,7 @@
 
 TcpClient::TcpClient()
 {
-    this->serverIPAddress = "192.168.0.27";
+    this->serverIPAddress = "127.0.0.1";
     this->serverPort = 1234;
 
     for(int i=0; i<4; i++) {

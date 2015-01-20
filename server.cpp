@@ -355,7 +355,7 @@ void *client_loop(void *arg) {
 
 			Json::Value game_list_msg;
 			game_list_msg["msg_type"] = GAME_LIST;
-
+			games_list_msg["games"] = Json::Value();
 			pthread_mutex_lock(&games_lock);
 			for (int i = 0; i < MAX_GAME_NUM; i++) {
 				if (games[i] != nullptr) {

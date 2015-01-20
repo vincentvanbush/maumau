@@ -3,7 +3,7 @@
 
 TcpClient::TcpClient()
 {
-    this->serverIPAddress = "127.0.0.1";
+    this->serverIPAddress = "192.168.0.27";
     this->serverPort = 1234;
 
     for(int i=0; i<4; i++) {
@@ -37,7 +37,7 @@ void TcpClient::sendMessage(Json::Value &msg) {
     int sentBytes = 0;
     while (sentBytes < c_size) {
         int x = this->tcpSocket->write(msg_c + sentBytes, (qint64) c_size - sentBytes);
-        qDebug() << "Sent " << x << " bytes";
+        if (x > 0) qDebug() << "Sent " << x << " bytes";
         sentBytes += x;
     }
     qDebug("Total: %d bytes\n", sentBytes);
@@ -53,7 +53,7 @@ Json::Value& TcpClient::recvMessage(int len) {
     int x;
     while (bytesRead < len) {
         x = tcpSocket->read(msg_buf + bytesRead, (qint64) len - bytesRead);
-        qDebug() << "Read " << x << " bytes";
+        if (x > 0) qDebug() << "Read " << x << " bytes";
         bytesRead += x;
     }
     qDebug("Total: %d bytes\n", bytesRead);

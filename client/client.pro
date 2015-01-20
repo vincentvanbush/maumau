@@ -16,7 +16,7 @@ SOURCES += main.cpp\
         mainwindow.cpp \
     tcpclient.cpp \
     gamewindow.cpp \
-    clickablelabel.cpp
+    cardlabel.cpp
 
 HEADERS  += mainwindow.h \
     tcpclient.h \

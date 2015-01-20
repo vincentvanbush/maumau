@@ -223,6 +223,9 @@ void MainWindow::onJoinOKMessageRecv()
 
     ui->nameEdit->setText(QString::fromUtf8(tcpClient->playerName));
 
+    GameWindow *gameWindow = new GameWindow(this->tcpClient, this);
+    gameWindow->show();
+
 
 }
 

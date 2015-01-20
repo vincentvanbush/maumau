@@ -2,7 +2,10 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QStandardItem>
+#include <QStandardItemModel>
 
+#include "gamewindow.h"
 #include "tcpclient.h"
 #include "../messages.h"
 

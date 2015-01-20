@@ -121,9 +121,6 @@ void *client_loop(void *arg) {
 			int player_token = json_buf["player_token"].asInt();
 			int game_token = json_buf["game_token"].asInt();
 			int game_id = json_buf["game_id"].asInt();
-			Json::Value move = json_buf["move"];
-
-			fprintf (stderr, "----------- (S) PLAYED CARDS COUNT: %d\n", json_buf["played_cards_count"].asInt());
 
 			struct game_info* game;
 			bool valid_move;
@@ -163,9 +160,10 @@ void *client_loop(void *arg) {
 
 					pick_cards_msg["cards"] = Json::Value();
 					if (player_token == game -> players[sender_turn] -> token) {
-						for (int i = 0; i < cards_picked_up.size(); i++)
+						for (int i = 0; i < cards_picked_up.size(); i++) {
 							pick_cards_msg["cards"][i]["value"] = cards_picked_up[i].value;
-							pick_cards_msg["cards"][i]["value"] = cards_picked_up[i].color;
+							pick_cards_msg["cards"][i]["color"] = cards_picked_up[i].color;
+						}
 					}
 
 					send_message (game -> players[i] -> socket, pick_cards_msg);

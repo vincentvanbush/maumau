@@ -141,11 +141,9 @@ void *client_loop(void *arg) {
 				short sender_turn = game -> turn;
 				cards_picked_up = update_game_state (json_buf, games[game_id]);
 
-				// Broadcast move to others
+				// Broadcast move to ALL players including sender
 				for (int i = 0; i < game -> players.size(); i++) {
-					if (game -> players[i] -> socket != rcv_sck) {
-						send_message (game -> players[i] -> socket, json_buf);
-					}
+					send_message (game -> players[i] -> socket, json_buf);
 				}
 
 				// If sender has to pick up any cards, broadcast PICK_CARDS to all players.
@@ -173,6 +171,9 @@ void *client_loop(void *arg) {
 				for (int i = 0; i < game -> players.size(); i++) {
 					Json::Value next_turn_msg;
 					next_turn_msg["msg_type"] = NEXT_TURN;
+					next_turn_msg["turns_for_next"] = game -> turns_to_miss;
+					next_turn_msg["cards_for_next"] = game -> cards_to_pick;
+
 					next_turn_msg["turn"] = game -> turn;
 					send_message (game -> players[i] -> socket, next_turn_msg);
 				}

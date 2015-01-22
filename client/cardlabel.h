@@ -9,8 +9,10 @@ class CardLabel : public QLabel
     Q_OBJECT
 
 public:
-    explicit CardLabel( QWidget * parent = 0 );
+    explicit CardLabel( int value, int color, QWidget * parent = 0 );
     ~CardLabel();
+    int value;
+    int color;
 
 signals:
     void clicked();

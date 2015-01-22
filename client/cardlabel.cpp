@@ -1,9 +1,11 @@
 #include "cardlabel.h"
 
-CardLabel::CardLabel( QWidget * parent ) :
+CardLabel::CardLabel( int value, int color, QWidget * parent ) :
     QLabel(parent)
 
 {
+    this->value = value;
+    this->color = color;
 }
 
 CardLabel::~CardLabel()

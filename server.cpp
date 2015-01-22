@@ -54,7 +54,7 @@ void *client_loop(void *arg) {
 			int game_id = json_buf["game_id"].asInt();
 			const char *player_name = json_buf["player_name"].asCString();
 
-			if (games[game_id] == nullptr) {
+			if (game_id == -1) {
 				// Game does not exist yet, we have to create it
 				fprintf (stderr, "[Socket %d] Game %d does not exist yet\n", rcv_sck, game_id);
 				if (games_num > MAX_GAME_NUM - 1 || game_id < 0) {
@@ -62,11 +62,22 @@ void *client_loop(void *arg) {
 					error_msg["msg_type"] = CANNOT_JOIN;
 					send_message (rcv_sck, error_msg);
 				}
-				game = new_game(game_id);
+				int i;
+				for (i = 0; i < MAX_GAME_NUM; i++) {
+					if (games[i] == nullptr) break;
+				}
+				game_id = i;
+				game = new_game(i);
 				pthread_mutex_lock(&games_lock);
-				games[game_id] = game;
+				games[i] = game;
 				games_num++;
 				pthread_mutex_unlock(&games_lock);
+			}
+			else if (games[game_id] == nullptr) {
+				Json::Value error_msg;
+				error_msg["msg_type"] = CANNOT_JOIN;
+				send_message (rcv_sck, error_msg);
+				break;
 			}
 			else {
 				// Game exists. Let the player join or send him an error.
@@ -93,6 +104,7 @@ void *client_loop(void *arg) {
 			player_joined_msg["msg_type"] = PLAYER_JOINED;
 			player_joined_msg["player_name"] = json_buf["player_name"].asString();
 			player_joined_msg["slot_number"] = (int) game -> players.size() - 1;
+			player_joined_msg["game_id"] = game_id;
 			for (int i = 0; i < game -> players.size(); i++) {
 				if (game -> players[i] -> socket != rcv_sck) {
 					send_message (game -> players[i] -> socket, player_joined_msg);

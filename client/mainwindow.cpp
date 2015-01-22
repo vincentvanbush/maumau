@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <QInputDialog>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -7,7 +8,11 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    tcpClient = new TcpClient();
+    bool ok;
+    QString ipAddr = QInputDialog::getText(this, "Connect to server", "Please enter server IP address (default is 127.0.0.1)", QLineEdit::Normal, QString(), &ok);
+    if (!ok) ipAddr = "127.0.0.1";
+
+    tcpClient = new TcpClient(ipAddr);
 
     for(int i=0; i<50; i++) {
         this->gamesIds[i] = nullptr;
@@ -29,6 +34,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(tcpClient, SIGNAL(cannotJoinSignal(Json::Value &)), this, SLOT(onCannotJoinMessageRecv(Json::Value &)));
     connect(tcpClient, SIGNAL(joinOKSignal(Json::Value &)), this, SLOT(onJoinOKMessageRecv(Json::Value &)));
     connect(tcpClient, SIGNAL(gameListSignal(Json::Value &)), this, SLOT(onGameListMessageRecv(Json::Value &)));
+
+
+    tcpClient->sendRequestGamesMessage();
 }
 
 MainWindow::~MainWindow()
@@ -47,23 +55,12 @@ void MainWindow::onNewGameButtonClicked()
     QString name = ui->setNameEdit->text();
     std::string playerName = name.toStdString();
 
-    int gameID = 0;
-    int i=0;
-    for(i; i<50; i++) {
-        if(!tcpClient->gameExists[i])
-            break;
-    }
-    if(i==50) {
-        qDebug() << "There are no empty slots for new game";
+    int gameID = -1;
+    if(playerName != "") {
+        tcpClient->sendJoinGameMessage(playerName, gameID);
     }
     else {
-        if(playerName != "") {
-            gameID = i;
-            tcpClient->sendJoinGameMessage(playerName, gameID);
-        }
-        else {
-            qDebug() << "You need to type your nick";
-        }
+        qDebug() << "You need to type your nick";
     }
 }
 

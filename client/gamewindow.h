@@ -40,7 +40,6 @@ private:
     std::map<int, int> cardCounts;
 
 private slots:
-    void on_pushButton_clicked();
     void on_moveButton_clicked();
     void on_readyButton_clicked();
 

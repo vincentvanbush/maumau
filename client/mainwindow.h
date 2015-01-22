@@ -34,6 +34,8 @@ public slots:
     void onGameListMessageRecv(Json::Value &);
 
 
+private slots:
+
 private:
     Ui::MainWindow *ui;
     std::string convertCardValue(int);

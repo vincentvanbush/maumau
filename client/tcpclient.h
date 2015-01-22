@@ -19,7 +19,7 @@ class TcpClient : public QObject {
     Q_OBJECT
 
 public:
-    TcpClient();
+    TcpClient(QString ip);
     ~TcpClient();
     void sendRequestGamesMessage();
     void sendJoinGameMessage(std::string, int);

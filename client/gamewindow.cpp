@@ -29,9 +29,6 @@ GameWindow::GameWindow(TcpClient *tcpClient, Json::Value &join_ok_msg, QWidget *
         cardCounts[i] = 5;
     }
 
-    Json::StyledWriter writer;
-    std::string s = writer.write(join_ok_msg);
-    qDebug() << s.c_str();
     for (int i = 0; i < join_ok_msg["player_names"].size(); i++) {
         if (i != mySlot && !join_ok_msg["player_names"][i].isNull()) {
             player_names[i] = QString(join_ok_msg["player_names"][i].asCString());
@@ -80,21 +77,12 @@ void GameWindow::addCardToLayout(int value, int color, QLayout *layout) {
     QString filename = getCardGfxFileName(value, color);
     QPixmap picture(filename);
 
-    CardLabel* lbl = new CardLabel();
+    CardLabel* lbl = new CardLabel(value, color);
     lbl->setPixmap(picture);
     lbl->setFixedSize(picture.size());
 
     layout->addWidget(lbl);
 
-}
-
-void GameWindow::on_pushButton_clicked()
-{
-    addCardToLayout(rand() % 9 + 2, rand() % 4 + HEART, ui->bottomCardLayout);
-    addCardToLayout(0, rand() % 4 + HEART, ui->topCardLayout);
-    addCardToLayout(0, rand() % 4 + HEART, ui->leftCardLayout);
-    addCardToLayout(0, rand() % 4 + HEART, ui->rightCardLayout);
-    addCardToLayout(rand() % 9 + 2, rand() % 4 + HEART, ui->tableCardLayout);
 }
 
 std::vector<card>* GameWindow::readCards()

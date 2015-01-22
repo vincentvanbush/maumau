@@ -1,9 +1,9 @@
 #include "tcpclient.h"
 #include <json/json.h>
 
-TcpClient::TcpClient()
+TcpClient::TcpClient(QString ip)
 {
-    this->serverIPAddress = "192.168.0.27";
+    this->serverIPAddress = ip;
     this->serverPort = 1234;
 
     for(int i=0; i<4; i++) {
@@ -173,7 +173,6 @@ void TcpClient::sendJoinGameMessage(std::string playerName, int gameID)
     join_game_msg["msg_type"] = JOIN_GAME;
     join_game_msg["player_name"] = playerName.c_str();
     join_game_msg["game_id"] = gameID;
-    this->gameIdentifier = gameID;
 
     sendMessage(join_game_msg);
 }
@@ -263,6 +262,7 @@ void TcpClient::joinOKSignalHandle(Json::Value& joinOK)
     this->slotNumber = joinOK["slot_number"].asInt();
     this->playerToken = joinOK["player_token"].asInt();
     this->gameToken = joinOK["game_token"].asInt();
+    this->gameIdentifier = joinOK["game_id"].asInt();
     // TODO
     // future change in protocole; additional info about slots and name players currently in game
 

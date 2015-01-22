@@ -104,7 +104,6 @@ void *client_loop(void *arg) {
 			player_joined_msg["msg_type"] = PLAYER_JOINED;
 			player_joined_msg["player_name"] = json_buf["player_name"].asString();
 			player_joined_msg["slot_number"] = (int) game -> players.size() - 1;
-			player_joined_msg["game_id"] = game_id;
 			for (int i = 0; i < game -> players.size(); i++) {
 				if (game -> players[i] -> socket != rcv_sck) {
 					send_message (game -> players[i] -> socket, player_joined_msg);
@@ -113,6 +112,7 @@ void *client_loop(void *arg) {
 
 			Json::Value join_ok_msg;
 			join_ok_msg["msg_type"] = JOIN_OK;
+			join_ok_msg["game_id"] = game_id;
 			join_ok_msg["player_token"] = player -> token;
 			join_ok_msg["game_token"] = game -> game_token;
 			join_ok_msg["slot_number"] = (int) game -> players.size() - 1;

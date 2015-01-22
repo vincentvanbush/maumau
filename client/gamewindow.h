@@ -3,6 +3,7 @@
 
 #include <QDialog>
 #include <QLayout>
+#include <QLabel>
 #include <map>
 #include "../messages.h"
 #include "tcpclient.h"
@@ -31,6 +32,7 @@ private:
     QString valueString(int);
     QString colorString(int);
     QLayout *getCardLayoutForSlot(int);
+    QLabel *getLabelForSlot(int);
     std::vector<card> cardsInHand;
     std::vector<card> cardsInTable;
 
@@ -48,6 +50,7 @@ private slots:
     void onPlayerJoinedMessageRecv(Json::Value &);
     void onMoveMessageRecv(Json::Value &);
     void onNextTurnMessageRecv(Json::Value &);
+    void onInvalidMoveMessageRecv(Json::Value&);
 };
 
 #endif // GAMEWINDOW_H

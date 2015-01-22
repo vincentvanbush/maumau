@@ -4,6 +4,7 @@
 #include <QSize>
 #include <QDebug>
 #include <QLabel>
+#include <QMessageBox>
 #include <json/json.h>
 #include <json/value.h>
 #include <json/writer.h>
@@ -22,6 +23,9 @@ GameWindow::GameWindow(TcpClient *tcpClient, Json::Value &join_ok_msg, QWidget *
     connect(tcpClient, SIGNAL(playerJoinedSignal(Json::Value &)), this, SLOT(onPlayerJoinedMessageRecv(Json::Value &)));
     connect(tcpClient, SIGNAL(moveSignal(Json::Value&)), this, SLOT(onMoveMessageRecv(Json::Value&)));
     connect(tcpClient, SIGNAL(nextTurnSignal(Json::Value&)), this, SLOT(onNextTurnMessageRecv(Json::Value&)));
+    connect(tcpClient, SIGNAL(invalidMoveSignal(Json::Value&)), this, SLOT(onInvalidMoveMessageRecv(Json::Value&)));
+
+
 
     this->mySlot = join_ok_msg["slot_number"].asInt();
 
@@ -30,8 +34,9 @@ GameWindow::GameWindow(TcpClient *tcpClient, Json::Value &join_ok_msg, QWidget *
     }
 
     for (int i = 0; i < join_ok_msg["player_names"].size(); i++) {
-        if (i != mySlot && !join_ok_msg["player_names"][i].isNull()) {
+        if (!join_ok_msg["player_names"][i].isNull()) {
             player_names[i] = QString(join_ok_msg["player_names"][i].asCString());
+            getLabelForSlot(i)->setText(player_names[i]);
             updateCards(i);
         }
     }
@@ -40,7 +45,6 @@ GameWindow::GameWindow(TcpClient *tcpClient, Json::Value &join_ok_msg, QWidget *
     /* TODO: implement those
     connect(tcpClient, SIGNAL(cannotReadySignal()), this, SLOT(onCannotReadyMessageRecv()));
     connect(tcpClient, SIGNAL(cannotLeaveSignal()), this, SLOT(onCannotLeaveMessageRecv()));
-    connect(tcpClient, SIGNAL(invalidMoveSignal()), this, SLOT(onInvalidMoveMessageRecv()));
     connect(tcpClient, SIGNAL(gameEndSignal()), this, SLOT(onGameEndMessageRecv()));
     connect(tcpClient, SIGNAL(playerLeftSignal()), this, SLOT(onPlayerLeftMessageRecv()));*/
 }
@@ -205,6 +209,18 @@ QLayout *GameWindow::getCardLayoutForSlot(int slotNumber) {
     if (dist == 3) return ui->rightCardLayout;
 }
 
+QLabel *GameWindow::getLabelForSlot(int slotNumber) {
+    int mySlotNumber = mySlot;
+    int dist = (slotNumber - mySlotNumber) % 4;
+    if (dist == -3) return ui->leftPlayerLabel;
+    if (dist == -2) return ui->topPlayerLabel;
+    if (dist == -1) return ui->rightPlayerLabel;
+    if (dist == 0) return ui->bottomPlayerLabel;
+    if (dist == 1) return ui->leftPlayerLabel;
+    if (dist == 2) return ui->topPlayerLabel;
+    if (dist == 3) return ui->rightPlayerLabel;
+}
+
 void GameWindow::on_moveButton_clicked()
 {
     short playedCardsCount = 0;
@@ -284,6 +300,7 @@ void GameWindow::onStartGameMessageRecv(Json::Value &msg)
 
     this->updateCards(mySlot);
     this->currentTurn = msg["turn"].asInt();
+    getLabelForSlot(currentTurn)->setText("<b>" + player_names[currentTurn] + "</b>");
 
     struct card first_card;
     first_card.color = msg["first_card_in_stack"]["color"].asInt();
@@ -297,6 +314,10 @@ void GameWindow::onPlayerJoinedMessageRecv(Json::Value &msg)
 {
     QString playerName(msg["player_name"].asCString());
     int playerSlot = msg["slot_number"].asInt();
+    player_names[playerSlot] = playerName;
+    QLabel *playerLabel = getLabelForSlot(playerSlot);
+    playerLabel->setText(playerName);
+
     updateCards(playerSlot);
 }
 
@@ -375,6 +396,18 @@ void GameWindow::onNextTurnMessageRecv(Json::Value &msg) {
 
     currentTurn = turn;
 
+    for (int i = 0; i < 3; i++) getLabelForSlot(i)->setText(player_names[i]);
+    getLabelForSlot(turn)->setText("<b>" + player_names[turn] + "</b>");
+
     ui->turnsLabel->setText(QString::number(turns_for_next));
     ui->cardsLabel->setText(QString::number(cards_for_next));
+}
+
+void GameWindow::onInvalidMoveMessageRecv(Json::Value &msg) {
+    QMessageBox box;
+    box.setText("This move is invalid.");
+    box.setInformativeText("Please try again with a valid one.");
+    box.setStandardButtons(QMessageBox::Ok);
+    box.setIcon(QMessageBox::Warning);
+    box.exec();
 }

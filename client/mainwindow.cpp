@@ -107,6 +107,7 @@ void MainWindow::onJoinOKMessageRecv(Json::Value &msg)
     QString slotNumber = QString::number(tcpClient->slotNumber);
     QString playerToken = QString::number(tcpClient->playerToken);
     QString gameToken = QString::number(tcpClient->gameToken);
+    int gameId = msg["game_id"].asInt();
 
     int numberOfOtherPlayersInGame = 0;
     for(std::map<int, std::string*>::iterator it = tcpClient->playersAtSlots.begin(); it != tcpClient->playersAtSlots.end(); ++it) {
@@ -116,7 +117,7 @@ void MainWindow::onJoinOKMessageRecv(Json::Value &msg)
     }
 
    // ui->nameEdit->setText(QString::fromUtf8(tcpClient->playerName));
-
+    tcpClient->gameIdentifier =gameId;
     GameWindow *gameWindow = new GameWindow(this->tcpClient, msg, this);
     gameWindow->show();
 

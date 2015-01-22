@@ -256,8 +256,6 @@ void GameWindow::on_moveButton_clicked()
 
     tcpClient->sendMoveMessage(playedCardsCount, playedCards, colorRequest, valueRequest);
 
-    tcpClient->updateHandAfterMove(playedCardsCount, playedCards);
-
     //this->readCards();
 }
 

@@ -71,28 +71,6 @@ public:
     std::map<int, std::string*> playersAtSlots;
 
 
-    // information about current hand
-    int numberOfCardsInHand;
-    std::vector<struct card> cardsInHand;
-    std::vector<struct card> cardsInStack;
-    struct card firstCardInStack;
-    short moveAtSlot;
-
-    // information about move
-    short playedCardsCount;
-    struct card playedCards[4];
-
-    short colorRequest;
-    short valueRequest;
-
-    short turn;
-    short turnsForNext;
-    short cardsForNext;
-
-    short slot;
-    short count;
-    struct card cards[30];
-
 
 //private slots:
 public slots:
@@ -114,26 +92,14 @@ signals:
     void gameListSignal(Json::Value &msg);
     void moveSignal(Json::Value &msg);
 
-
-
-
-
-
-
-
-
-
-
 private:
     QTcpSocket *tcpSocket;
     QString serverIPAddress;
     quint16 serverPort;
 
-
 private slots:
     void socketError(QAbstractSocket::SocketError);
     void socketConnected();
-
 
 };
 

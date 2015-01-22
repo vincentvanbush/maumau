@@ -33,8 +33,8 @@ public slots:
     void onJoinOKMessageRecv(Json::Value &);
     void onGameListMessageRecv(Json::Value &);
 
-
 private slots:
+    void onSocketErrorSignal(QAbstractSocket::SocketError err);
 
 private:
     Ui::MainWindow *ui;

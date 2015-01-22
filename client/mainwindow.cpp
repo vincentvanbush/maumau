@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QInputDialog>
+#include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -34,6 +35,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(tcpClient, SIGNAL(cannotJoinSignal(Json::Value &)), this, SLOT(onCannotJoinMessageRecv(Json::Value &)));
     connect(tcpClient, SIGNAL(joinOKSignal(Json::Value &)), this, SLOT(onJoinOKMessageRecv(Json::Value &)));
     connect(tcpClient, SIGNAL(gameListSignal(Json::Value &)), this, SLOT(onGameListMessageRecv(Json::Value &)));
+    connect(tcpClient, SIGNAL(socketErrorSignal(QAbstractSocket::SocketError)), this, SLOT(onSocketErrorSignal(QAbstractSocket::SocketError)));
 
 
     tcpClient->sendRequestGamesMessage();
@@ -219,8 +221,15 @@ std::string MainWindow::convertCardValue(int value)
     }
 }
 
+void MainWindow::onSocketErrorSignal(QAbstractSocket::SocketError err) {
+    QString errName;
+    QDebug(&errName) << err;
+    /*QMessageBox box;
+    box.setText("Connection error");
 
-
-
-
-
+    box.setInformativeText(errName);
+    box.setStandardButtons(QMessageBox::Ok);
+    box.setIcon(QMessageBox::Warning);
+    box.exec();*/
+    this->statusBar()->showMessage("Connection error: " + errName);
+}

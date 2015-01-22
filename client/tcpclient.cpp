@@ -1,10 +1,12 @@
 #include "tcpclient.h"
 #include <json/json.h>
+#include <QMessageBox>
 
 TcpClient::TcpClient(QString ip)
 {
     this->serverIPAddress = ip;
     this->serverPort = 1234;
+    this->socketGone = false;
 
     for(int i=0; i<4; i++) {
         this->playersAtSlots[i] = nullptr;
@@ -20,6 +22,7 @@ TcpClient::TcpClient(QString ip)
     connect(tcpSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(socketError(QAbstractSocket::SocketError)));
     connect(tcpSocket, SIGNAL(connected()), this, SLOT(socketConnected()));
     connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(readMessage()));
+    connect(tcpSocket, SIGNAL(destroyed()), this, SLOT(socketDestroyed()));
     tcpSocket->connectToHost(this->serverIPAddress, this->serverPort);
 
 }
@@ -28,13 +31,16 @@ TcpClient::~TcpClient()
 }
 
 void TcpClient::sendMessage(Json::Value &msg) {
+    if (socketGone) return;
+
     Json::FastWriter writer;
     std::string msg_str = writer.write(msg);
     const char* msg_c = msg_str.c_str();
     int c_size = strlen(msg_c);
     qDebug() << "Sending " << c_size << " bytes...";
 
-    this->tcpSocket->write((const char*)&c_size, (qint64) sizeof(int));
+    int code = this->tcpSocket->write((const char*)&c_size, (qint64) sizeof(int));
+    if (code < 0) return;
 
     int sentBytes = 0;
     while (sentBytes < c_size) {
@@ -45,7 +51,6 @@ void TcpClient::sendMessage(Json::Value &msg) {
     qDebug("Total: %d bytes\n", sentBytes);
 
     qDebug("Sent message content: %s", msg_c);
-    // this->tcpSocket->write(msg_c, (qint64) c_size);
 }
 
 Json::Value& TcpClient::recvMessage(int len) {
@@ -236,6 +241,16 @@ void TcpClient::socketError(QAbstractSocket::SocketError err)
 {
     qDebug() << "Problem with socket";
     qDebug() << err;
+    tcpSocket->deleteLater();
+    emit socketErrorSignal(err);
+//    QMessageBox box;
+//    box.setText("Connection error");
+//    QString errName;
+//    QDebug(&errName) << err;
+//    box.setInformativeText(errName);
+//    box.setStandardButtons(QMessageBox::Ok);
+//    box.setIcon(QMessageBox::Warning);
+//    box.exec();
 }
 
 void TcpClient::socketConnected()
@@ -243,4 +258,7 @@ void TcpClient::socketConnected()
     qDebug() << "Connection completed";
 }
 
-
+void TcpClient::socketDestroyed()
+{
+    this->socketGone = true;
+}

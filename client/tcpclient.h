@@ -91,15 +91,18 @@ signals:
     void playerLeftSignal(Json::Value &msg);
     void gameListSignal(Json::Value &msg);
     void moveSignal(Json::Value &msg);
+    void socketErrorSignal(QAbstractSocket::SocketError);
 
 private:
     QTcpSocket *tcpSocket;
     QString serverIPAddress;
     quint16 serverPort;
+    bool socketGone;
 
 private slots:
     void socketError(QAbstractSocket::SocketError);
     void socketConnected();
+    void socketDestroyed();
 
 };
 

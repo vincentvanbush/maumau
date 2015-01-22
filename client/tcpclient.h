@@ -100,19 +100,19 @@ public slots:
 
 
 signals:
-    void cannotJoinSignal();
-    void cannotReadySignal();
-    void cannotLeaveSignal();
-    void joinOKSignal();
-    void playerJoinedSignal();
-    void starGameSignal();
-    void nextTurnSignal();
-    void pickCardsSignal();
-    void invalidMoveSignal();
-    void gameEndSignal();
-    void playerLeftSignal();
-    void gameListSignal();
-    void moveSignal();
+    void cannotJoinSignal(Json::Value &msg);
+    void cannotReadySignal(Json::Value &msg);
+    void cannotLeaveSignal(Json::Value &msg);
+    void joinOKSignal(Json::Value &msg);
+    void playerJoinedSignal(Json::Value &msg);
+    void starGameSignal(Json::Value &msg);
+    void nextTurnSignal(Json::Value &msg);
+    void pickCardsSignal(Json::Value &msg);
+    void invalidMoveSignal(Json::Value &msg);
+    void gameEndSignal(Json::Value &msg);
+    void playerLeftSignal(Json::Value &msg);
+    void gameListSignal(Json::Value &msg);
+    void moveSignal(Json::Value &msg);
 
 
 

@@ -3,7 +3,7 @@
 
 TcpClient::TcpClient()
 {
-    this->serverIPAddress = "127.0.0.1";
+    this->serverIPAddress = "192.168.0.27";
     this->serverPort = 1234;
 
     for(int i=0; i<4; i++) {
@@ -89,52 +89,52 @@ void TcpClient::readMessage()
 
         switch(messageType) {
         case CANNOT_JOIN:
-            this->cannotJoinSignal();
+            emit cannotJoinSignal(gameMessage);
             break;
         case CANNOT_READY:
-            this->cannotReadySignal();
+            emit cannotReadySignal(gameMessage);
             break;
         case CANNOT_LEAVE:
-            this->cannotLeaveSignal();
+            emit cannotLeaveSignal(gameMessage);
             break;
         case JOIN_OK:
             this->joinOKSignalHandle(gameMessage);
-            this->joinOKSignal();
+            emit joinOKSignal(gameMessage);
             break;
         case PLAYER_JOINED:
             this->playerJoinedSignalHandle(gameMessage);
-            this->playerJoinedSignal();
+            emit playerJoinedSignal(gameMessage);
             break;
         case START_GAME:
             this->startGameSignalHandle(gameMessage);
-            this->starGameSignal();
+            emit starGameSignal(gameMessage);
             break;
         case NEXT_TURN:
             this->nextTurnSignalHandle(gameMessage);
-            this->nextTurnSignal();
+            emit nextTurnSignal(gameMessage);
             break;
         case PICK_CARDS:
             this->pickCardsSignalHandle(gameMessage);
-            this->pickCardsSignal();
+            emit pickCardsSignal(gameMessage);
             break;
         case INVALID_MOVE:
-            this->invalidMoveSignal();
+            emit invalidMoveSignal(gameMessage);
             break;
         case GAME_END:
             this->gameEndSignalHandle(gameMessage);
-            this->gameEndSignal();
+            emit gameEndSignal(gameMessage);
             break;
         case PLAYER_LEFT:
             this->playerLeftSignalHandle(gameMessage);
-            this->playerLeftSignal();
+            emit playerLeftSignal(gameMessage);
             break;
         case GAME_LIST:
             this->gameListSignalHandle(gameMessage);
-            this->gameListSignal();
+            emit gameListSignal(gameMessage);
             break;
         case MOVE:
             this->moveSignalHandle(gameMessage);
-            this->moveSignal();
+            emit moveSignal(gameMessage);
             break;
         }
     } while (tcpSocket->bytesAvailable());

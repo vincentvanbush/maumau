@@ -28,27 +28,10 @@ public slots:
     void onRequestGamesButtonClicked();
     void onJoinGameButtonClicked();
     void onNewGameButtonClicked();
-    void onReadyButtonClicked();
-    void onLeaveGameButtonClicked();
-    void onSendMoveButtonClicked();
 
-
-
-    void onCannotJoinMessageRecv();
-    void onCannotReadyMessageRecv();
-    void onCannotLeaveMessageRecv();
-    void onJoinOKMessageRecv();
-    void onPlayerJoinedMessageRecv();
-    void onStartGameMessageRecv();
-    void onNextTurnMessageRecv();
-    void onPickCardsMessageRecv();
-    void onInvalidMoveMessageRecv();
-    void onGameEndMessageRecv();
-    void onPlayerLeftMessageRecv();
-    void onGameListMessageRecv();
-    void onMoveMessageRecv();
-
-
+    void onCannotJoinMessageRecv(Json::Value &);
+    void onJoinOKMessageRecv(Json::Value &);
+    void onGameListMessageRecv(Json::Value &);
 
 
 private:

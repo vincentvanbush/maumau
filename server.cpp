@@ -10,6 +10,7 @@
 #include <pthread.h>
 #include <map>
 #include <string>
+#include <algorithm>
 
 #include "utils.h"
 #include "messages.h"
@@ -70,8 +71,7 @@ void *client_loop(void *arg) {
 
 
 	while (recv (rcv_sck, &msg_len, sizeof msg_len, 0) > 0) {
-		// int msg_type = msg_buffer.msg_type;
-		// printf("(%d) ", msg_type);
+
 		fprintf (stderr, "[Socket %d] Receiving message of length %d \n", rcv_sck, msg_len);
 		Json::Value json_buf;
 		json_buf = recv_message(rcv_sck, msg_len);
@@ -264,7 +264,6 @@ void *client_loop(void *arg) {
 			pthread_mutex_lock(&games_lock);
 			if (slot < 0 || slot > 3 || game_id < 0 || game_id > 49 || games[game_id] == nullptr
 				|| games[game_id] -> finished || games[game_id] -> game_token != game_token) {
-				puts ("Checkpoint 1");
 				printf("No such game or invalid slot\n");
 				invalid_message = true;
 			}
@@ -274,7 +273,6 @@ void *client_loop(void *arg) {
 					printf("Slot number doesn't match player token at given slot\n");
 					invalid_message = true;
 				}
-				puts ("Checkpoint 2");
 			}
 
 			if (invalid_message) {
@@ -282,9 +280,7 @@ void *client_loop(void *arg) {
 			}
 			else {
 				struct player_info *player = game -> players[slot];
-				puts ("Checkpoint 4");
 				player_leave_game (player, game);
-				puts ("Checkpoint 5");
 				if (game -> players.size() > 0) { // only if any player is in game
 					// Broadcast message
 					Json::Value player_left_msg;
@@ -300,10 +296,8 @@ void *client_loop(void *arg) {
 						}
 
 					}
-					puts ("Checkpoint 6");
 
 					if (game -> started && !player -> finished) {
-						puts ("Checkpoint 7");
 						Json::Value game_end_msg;
 						game_end_msg["msg_type"] = GAME_END;
 						game_end_msg["game_token"] = game_token;
@@ -312,7 +306,6 @@ void *client_loop(void *arg) {
 						for (std::map<int, struct player_info*>::iterator it = game -> players.begin();
 							it != game -> players.end();
 							it++) {
-							puts ("Checkpoint 8");
 							if ((*it).second -> token != player_token)
 								send_message((*it).second -> socket, game_end_msg);
 							
@@ -327,7 +320,6 @@ void *client_loop(void *arg) {
 					games[game_id] -> started = false;
 					games[game_id] -> finished = true;
 				}
-				puts ("Checkpoint 9");
 
 			}
 			pthread_mutex_unlock(&games_lock);
@@ -438,8 +430,14 @@ void *client_loop(void *arg) {
 			printf("Unrecognized message type %d\n", msg_type);
 		}
 
+		}
+
 	}
-	}
+	printf ("Socket %d disconnected \n", rcv_sck);
+	pthread_mutex_lock (&sockets_lock);
+	all_sockets.erase (std::remove (std::begin(all_sockets), std::end(all_sockets), rcv_sck), std::end(all_sockets));
+	pthread_mutex_unlock (&sockets_lock);
+
 }
 
 void *main_loop(void *arg) {

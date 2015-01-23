@@ -24,7 +24,6 @@ public:
     
 //private slots:
 public slots:
-    void onRequestGamesButtonClicked();
     void onJoinGameButtonClicked();
     void onNewGameButtonClicked();
 

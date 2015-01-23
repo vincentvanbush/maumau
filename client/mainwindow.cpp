@@ -24,7 +24,6 @@ MainWindow::MainWindow(QWidget *parent) :
     //this->fillGamesTable();
 
     // signals from interface
-    connect(ui->requestGamesButton, SIGNAL(clicked()), this, SLOT(onRequestGamesButtonClicked()));
     connect(ui->joinGameButton, SIGNAL(clicked()), this, SLOT(onJoinGameButtonClicked()));
     connect(ui->newGameButton, SIGNAL(clicked()), this, SLOT(onNewGameButtonClicked()));
 
@@ -40,12 +39,6 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete ui;
-}
-
-// methods handling signals from interface e.g. clicking buttons
-void MainWindow::onRequestGamesButtonClicked()
-{
-    tcpClient->sendRequestGamesMessage();
 }
 
 void MainWindow::onNewGameButtonClicked()

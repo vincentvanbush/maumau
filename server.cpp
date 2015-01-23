@@ -64,7 +64,6 @@ void *client_loop(void *arg) {
 	int rcv_sck = *(int*)arg;
 
 	printf ("Starting client thread on socket %d\n", rcv_sck);
-	struct game_msg msg_buffer;
 	struct sockaddr_in cl_addr;
 
 	int msg_len;

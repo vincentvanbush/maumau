@@ -7,6 +7,11 @@
 #include <netinet/in.h>
 #include <json/json.h>
 
+struct card {
+	short value;
+	short color;
+};
+
 struct player_info {
 	int token;
 	char player_name[30];

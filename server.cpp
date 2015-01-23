@@ -60,6 +60,7 @@ void broadcast_game_list (int rcv_sck = -1) {
 	
 }
 
+// Routine executed in a client's thread.
 void *client_loop(void *arg) {
 	int rcv_sck = *(int*)arg;
 
@@ -67,10 +68,12 @@ void *client_loop(void *arg) {
 
 	int msg_len;
 
-
+	// Message loop. First receive the length of a message.
 	while (recv (rcv_sck, &msg_len, sizeof msg_len, 0) > 0) {
 
 		fprintf (stderr, "[Socket %d] Receiving message of length %d \n", rcv_sck, msg_len);
+
+		// And then receive the message itself.
 		Json::Value json_buf;
 		json_buf = recv_message(rcv_sck, msg_len);
 
@@ -79,6 +82,7 @@ void *client_loop(void *arg) {
 
 		switch (msg_type) {
 
+		// Joining game
 		case JOIN_GAME: {
 			fprintf (stderr, "[Socket %d] Received join game message from %s\n", rcv_sck, json_buf["player_name"].asCString());
 			struct game_info* game;
@@ -161,6 +165,7 @@ void *client_loop(void *arg) {
 		}
 		break;
 
+		// A client makes a move
 		case MOVE: {
 			printf("Received move message\n");
 
@@ -252,6 +257,7 @@ void *client_loop(void *arg) {
 		}
 		break;
 
+		// A client leaves a game
 		case LEAVE_GAME: {
 			printf("Received leave game message\n");
 			unsigned player_token = json_buf["player_token"].asInt();
@@ -330,6 +336,7 @@ void *client_loop(void *arg) {
 		}
 		break;
 
+		// A client tells he's ready to play
 		case READY: {
 
 			printf("Received ready message\n");
@@ -420,6 +427,7 @@ void *client_loop(void *arg) {
 		}
 		break;
 
+		// A client requests game list
 		case REQUEST_GAME_LIST: {
 			printf("Received request game list message\n");
 
@@ -427,6 +435,7 @@ void *client_loop(void *arg) {
 		}
 		break;
 
+		// When the message type is unknown
 		default: {
 			printf("Unrecognized message type %d\n", msg_type);
 		}
@@ -495,6 +504,7 @@ int main(int argc, char* argv[]) {
     	exit (EXIT_FAILURE);
 	}
 
+	// You can type in a game number to show what's going on inside.
 	while (true) {
 		int id;
 		printf ("Enter game id to show state ");
@@ -539,9 +549,6 @@ int main(int argc, char* argv[]) {
 
 		printf("\n\n");
 	}
-
-	printf ("Press ENTER to exit server\n");
-	getc (stdin);
 
 	exit (EXIT_SUCCESS);
 }

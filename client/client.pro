@@ -37,3 +37,5 @@ INCLUDEPATH += /usr/include/jsoncpp/
 
 RESOURCES += \
     res.qrc
+
+QMAKE_CXXFLAGS += -Wall

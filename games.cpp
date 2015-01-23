@@ -87,7 +87,7 @@ void deal_cards (struct game_info* game) {
 	std::deque <struct card>* deck = &game -> deck;
 
 	for (int i = 0; i < 5; i++) {
-		for (int j = 0; j < game -> players.size(); j++) {
+		for (unsigned j = 0; j < game -> players.size(); j++) {
 			struct player_info* player = game -> players[j];
 			struct card dealt_card = deck -> front();
 			deck -> pop_front();
@@ -128,8 +128,8 @@ bool validate_move (Json::Value move_msg, struct game_info* game) {
 		card.value = move_msg["played_cards"][i]["value"].asInt();
 		played_cards.push_back (card);
 	}
-	int player_token = move_msg["player_token"].asInt();
-	int game_token = move_msg["game_token"].asInt();
+	unsigned player_token = move_msg["player_token"].asInt();
+	unsigned game_token = move_msg["game_token"].asInt();
 
 	// Check if game is started
 	if (!game -> started) {
@@ -145,7 +145,7 @@ bool validate_move (Json::Value move_msg, struct game_info* game) {
 
 	// Check if all played cards have the same value
 	short value = 0;
-	for (int i = 0; i < played_cards.size(); i++) {
+	for (unsigned i = 0; i < played_cards.size(); i++) {
 		short prev_value = value;
 		value = played_cards[i].value;
 		if (prev_value == 0) continue;
@@ -171,9 +171,9 @@ bool validate_move (Json::Value move_msg, struct game_info* game) {
 		struct player_info *player = game -> players[game -> turn];
 		std::vector <struct card> &hand = player -> cards;
 
-		for (int i = 0; i < played_cards.size(); i++) {
+		for (unsigned i = 0; i < played_cards.size(); i++) {
 			bool card_eq = false;
-			for (int j = 0; j < hand.size(); j++) {
+			for (unsigned j = 0; j < hand.size(); j++) {
 				if (card_equals (hand[j], played_cards[i])) {
 					card_eq = true;
 					break;
@@ -353,8 +353,8 @@ std::deque <struct card> update_game_state(Json::Value move, struct game_info* g
 	}
 	std::vector <struct card> &player_cards = player -> cards;
 
-	for (int i = 0; i < move_cards.size(); i++) {
-		for (int j = 0; j < player_cards.size(); j++) {
+	for (unsigned i = 0; i < move_cards.size(); i++) {
+		for (unsigned j = 0; j < player_cards.size(); j++) {
 			if (card_equals (move_cards[i], player_cards[j])) {
 				player_cards.erase(player_cards.begin() + j);
 				break;
@@ -399,7 +399,7 @@ std::deque <struct card> pick_n_cards (struct game_info* game, short n, short pl
 bool is_finished (struct game_info* game) {
 	if (game -> players.size() == 0)
 		return true;
-	short ret = finished_players (game);
+	unsigned ret = finished_players (game);
 	if (ret == game -> players.size() - 1)
 		return true;
 	return false;
@@ -407,7 +407,7 @@ bool is_finished (struct game_info* game) {
 
 short finished_players (struct game_info *game) {
 	short ret = 0;
-	for (int i = 0; i < game -> players.size(); i++) {
+	for (unsigned i = 0; i < game -> players.size(); i++) {
 		struct player_info* player = game -> players[i];
 		if (!player -> finished) ++ret;
 	}

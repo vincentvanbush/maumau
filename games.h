@@ -8,12 +8,12 @@
 #include <json/json.h>
 
 struct card {
-	short value;
-	short color;
+	unsigned value;
+	unsigned color;
 };
 
 struct player_info {
-	int token;
+	unsigned token;
 	char player_name[30];
 	bool ready;
 	bool finished;
@@ -24,17 +24,17 @@ struct player_info {
 };
 
 struct game_info {
-	int game_token;
-	int game_id;
+	unsigned game_token;
+	unsigned game_id;
 	std::map<int, struct player_info*> players;
 	std::deque <struct card> played_cards;
 	std::deque <struct card> deck;
-	short turn;
-	short color_request;
-	short value_request;
-	short turns_to_miss;
-	short cards_to_pick;
-	short request_ttl;
+	unsigned turn;
+	unsigned color_request;
+	unsigned value_request;
+	unsigned turns_to_miss;
+	unsigned cards_to_pick;
+	unsigned request_ttl;
 	bool started;
 	bool player_connected[4];
 	bool finished;

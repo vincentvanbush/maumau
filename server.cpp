@@ -51,7 +51,7 @@ void broadcast_game_list (int rcv_sck = -1) {
 
 	if (rcv_sck == -1) {
 		pthread_mutex_lock (&sockets_lock);
-		for (int i = 0; i < all_sockets.size(); i++) {
+		for (unsigned i = 0; i < all_sockets.size(); i++) {
 			send_message (all_sockets[i], game_list_msg);
 		}
 		pthread_mutex_unlock (&sockets_lock);		
@@ -64,7 +64,6 @@ void *client_loop(void *arg) {
 	int rcv_sck = *(int*)arg;
 
 	printf ("Starting client thread on socket %d\n", rcv_sck);
-	struct sockaddr_in cl_addr;
 
 	int msg_len;
 
@@ -137,7 +136,7 @@ void *client_loop(void *arg) {
 			player_joined_msg["msg_type"] = PLAYER_JOINED;
 			player_joined_msg["player_name"] = json_buf["player_name"].asString();
 			player_joined_msg["slot_number"] = (int) game -> players.size() - 1;
-			for (int i = 0; i < game -> players.size(); i++) {
+			for (unsigned i = 0; i < game -> players.size(); i++) {
 				if (game -> players[i] -> socket != rcv_sck) {
 					send_message (game -> players[i] -> socket, player_joined_msg);
 				}
@@ -150,7 +149,7 @@ void *client_loop(void *arg) {
 			join_ok_msg["game_token"] = game -> game_token;
 			join_ok_msg["slot_number"] = (int) game -> players.size() - 1;
 			join_ok_msg["player_names"] = Json::Value();
-			for (int i = 0; i < game -> players.size(); i++) {
+			for (unsigned i = 0; i < game -> players.size(); i++) {
 				join_ok_msg["player_names"][i] = Json::Value(game -> players[i] -> player_name);
 			}
 
@@ -165,9 +164,8 @@ void *client_loop(void *arg) {
 		case MOVE: {
 			printf("Received move message\n");
 
-			int player_token = json_buf["player_token"].asInt();
-			int game_token = json_buf["game_token"].asInt();
-			int game_id = json_buf["game_id"].asInt();
+			unsigned player_token = json_buf["player_token"].asInt();
+			unsigned game_id = json_buf["game_id"].asInt();
 
 			struct game_info* game;
 			bool valid_move;
@@ -190,13 +188,13 @@ void *client_loop(void *arg) {
 				cards_picked_up = update_game_state (json_buf, games[game_id]);
 
 				// Broadcast move to ALL players including sender
-				for (int i = 0; i < game -> players.size(); i++) {
+				for (unsigned i = 0; i < game -> players.size(); i++) {
 					send_message (game -> players[i] -> socket, json_buf);
 				}
 
 				// If sender has to pick up any cards, broadcast PICK_CARDS to all players.
 				// For the sender only, augment the message with the cards he picks.
-				if (cards_picked_up.size() > 0) for (int i = 0; i < game -> players.size(); i++) {
+				if (cards_picked_up.size() > 0) for (unsigned i = 0; i < game -> players.size(); i++) {
 					Json::Value pick_cards_msg;
 
 					pick_cards_msg["msg_type"] = PICK_CARDS;
@@ -206,7 +204,7 @@ void *client_loop(void *arg) {
 
 					pick_cards_msg["cards"] = Json::Value();
 					if (player_token == game -> players[sender_turn] -> token) {
-						for (int i = 0; i < cards_picked_up.size(); i++) {
+						for (unsigned i = 0; i < cards_picked_up.size(); i++) {
 							pick_cards_msg["cards"][i]["value"] = cards_picked_up[i].value;
 							pick_cards_msg["cards"][i]["color"] = cards_picked_up[i].color;
 						}
@@ -216,7 +214,7 @@ void *client_loop(void *arg) {
 				}
 
 				// Send NEXT_TURN to all players
-				for (int i = 0; i < game -> players.size(); i++) {
+				for (unsigned i = 0; i < game -> players.size(); i++) {
 					Json::Value next_turn_msg;
 					next_turn_msg["msg_type"] = NEXT_TURN;
 					next_turn_msg["turns_for_next"] = game -> turns_to_miss;
@@ -233,7 +231,7 @@ void *client_loop(void *arg) {
 					Json::Value game_end_msg;
 					game_end_msg["msg_type"] = GAME_END;
 
-					for (int i = 0; i < game -> players.size() && !game -> players[i] -> left; i++) {
+					for (unsigned i = 0; i < game -> players.size() && !game -> players[i] -> left; i++) {
 						send_message (game -> players[i] -> socket, game_end_msg);
 					}
 
@@ -252,9 +250,9 @@ void *client_loop(void *arg) {
 
 		case LEAVE_GAME: {
 			printf("Received leave game message\n");
-			int player_token = json_buf["player_token"].asInt();
-			int game_token = json_buf["game_token"].asInt();
-			int game_id = json_buf["game_id"].asInt();
+			unsigned player_token = json_buf["player_token"].asInt();
+			unsigned game_token = json_buf["game_token"].asInt();
+			unsigned game_id = json_buf["game_id"].asInt();
 			short slot = json_buf["slot"].asInt();
 
 			bool invalid_message = false;
@@ -334,8 +332,8 @@ void *client_loop(void *arg) {
 			int game_id = json_buf["game_id"].asInt();
 			printf ("Game id = %hu\n", game_id);
 
-			int player_token = json_buf["player_token"].asInt();
-			int game_token = json_buf["game_token"].asInt();
+			unsigned player_token = json_buf["player_token"].asInt();
+			unsigned game_token = json_buf["game_token"].asInt();
 
 			//struct ready_msg ready_msg = msg_buffer.message.ready;
 			bool invalid_player_token;
@@ -354,7 +352,7 @@ void *client_loop(void *arg) {
 					// if received game token is different to the actual one, send error
 					invalid_player_token = true;
 				}
-				else for (int i = 0; i < game -> players.size(); i++) {
+				else for (unsigned i = 0; i < game -> players.size(); i++) {
 					if (game -> players[i] -> token == player_token) {
 						invalid_player_token = false;
 						player_index = i;
@@ -375,8 +373,8 @@ void *client_loop(void *arg) {
 			pthread_mutex_unlock(&games_lock);
 
 			if (game -> players.size() >= 2) {
-				short ready_players = 0;
-				for (int i = 0; i < game -> players.size(); i++)
+				unsigned ready_players = 0;
+				for (unsigned i = 0; i < game -> players.size(); i++)
 					if (game -> players[i] -> ready)
 						++ready_players;
 				if (ready_players == game -> players.size()) {
@@ -387,14 +385,14 @@ void *client_loop(void *arg) {
 					pthread_mutex_unlock(&games_lock);
 
 					// send 'Start game' to all players in game
-					for (int i = 0; i < game -> players.size(); i++) {
+					for (unsigned i = 0; i < game -> players.size(); i++) {
 						int player_sck = game -> players[i] -> socket;
 						struct player_info* player = game -> players[i];
 
 						Json::Value start_game_msg;
 						start_game_msg["msg_type"] = START_GAME;
 
-						for (int j = 0; j < player -> cards.size(); j++) {
+						for (unsigned j = 0; j < player -> cards.size(); j++) {
 							start_game_msg["player_cards"][j]["value"] = player -> cards[j].value;
 							start_game_msg["player_cards"][j]["color"] = player -> cards[j].color;
 						}
@@ -437,6 +435,7 @@ void *client_loop(void *arg) {
 	all_sockets.erase (std::remove (std::begin(all_sockets), std::end(all_sockets), rcv_sck), std::end(all_sockets));
 	pthread_mutex_unlock (&sockets_lock);
 
+	return 0;
 }
 
 void *main_loop(void *arg) {
@@ -504,23 +503,23 @@ int main(int argc, char* argv[]) {
 
 		pthread_mutex_lock(&games_lock);
 		printf ("Game %d\n", id);
-		for (int i = 0; i < games[id] -> players.size(); i++) {
+		for (unsigned i = 0; i < games[id] -> players.size(); i++) {
 			printf("%d: %s ", i, games[id] -> players[i] -> player_name);
 			printf("Cards: ");
 			std::vector <struct card> &cards = games[id] -> players[i] -> cards;
-			for (int j = 0; j < cards.size(); j++) {
+			for (unsigned j = 0; j < cards.size(); j++) {
 				printf("%d %d\t", cards[j].value, cards[j].color);
 			}
 			printf("\n");
 		}
 
 		printf("Cards on table:\n");
-		for (int i = 0; i < games[id] -> played_cards.size(); i++) {
+		for (unsigned i = 0; i < games[id] -> played_cards.size(); i++) {
 			printf("%d %d, ", games[id] -> played_cards[i].value, games[id] -> played_cards[i].color);
 		}
 
 		printf("Deck:\n");
-		for (int i = 0; i < games[id] -> deck.size(); i++) {
+		for (unsigned i = 0; i < games[id] -> deck.size(); i++) {
 			printf("%d %d, ", games[id] -> deck[i].value, games[id] -> deck[i].color);
 		}
 		printf("\n\n");

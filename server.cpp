@@ -23,7 +23,41 @@ const int MAX_GAME_NUM = 50;
 ushort service_port = 1234;
 pthread_t main_thread;
 
+std::vector<int> all_sockets;
+pthread_mutex_t sockets_lock = PTHREAD_MUTEX_INITIALIZER;
+
 int games_num = 0;
+
+void broadcast_game_list (int rcv_sck = -1) {
+	Json::Value game_list_msg;
+	game_list_msg["msg_type"] = GAME_LIST;
+	game_list_msg["games"] = Json::Value(Json::arrayValue);
+	pthread_mutex_lock(&games_lock);
+	for (int i = 0; i < MAX_GAME_NUM; i++) {
+		if (games[i] != nullptr && !games[i] -> finished) {
+			game_list_msg["games"][i]["id"] = games[i] -> game_id;
+			game_list_msg["games"][i]["players_count"] = (int) games[i] -> players.size();
+			for (int j = 0; j < 4; j++) {
+				if (games[i] -> player_connected[j])
+					game_list_msg["games"][i]["player_nicks"][j] = games[i] -> players[j] -> player_name;
+				else
+					game_list_msg["games"][i]["player_nicks"][j] = Json::Value(Json::nullValue);
+			}
+			game_list_msg["games"][i]["started"] = games[i] -> started;
+		}
+	}
+	pthread_mutex_unlock(&games_lock);
+
+	if (rcv_sck == -1) {
+		pthread_mutex_lock (&sockets_lock);
+		for (int i = 0; i < all_sockets.size(); i++) {
+			send_message (all_sockets[i], game_list_msg);
+		}
+		pthread_mutex_unlock (&sockets_lock);		
+	}
+	else send_message (rcv_sck, game_list_msg);
+	
+}
 
 void *client_loop(void *arg) {
 	int rcv_sck = *(int*)arg;
@@ -123,6 +157,8 @@ void *client_loop(void *arg) {
 
 			puts("--- Join OK");
 			send_message (rcv_sck, join_ok_msg);
+
+			broadcast_game_list ();
 
 		}
 		break;
@@ -296,6 +332,8 @@ void *client_loop(void *arg) {
 			}
 			pthread_mutex_unlock(&games_lock);
 
+			broadcast_game_list();
+
 		}
 		break;
 
@@ -378,6 +416,8 @@ void *client_loop(void *arg) {
 
 						send_message (player_sck, start_game_msg);
 
+						broadcast_game_list ();
+
 					}
 
 				}
@@ -390,26 +430,7 @@ void *client_loop(void *arg) {
 		case REQUEST_GAME_LIST: {
 			printf("Received request game list message\n");
 
-			Json::Value game_list_msg;
-			game_list_msg["msg_type"] = GAME_LIST;
-			game_list_msg["games"] = Json::Value(Json::arrayValue);
-			pthread_mutex_lock(&games_lock);
-			for (int i = 0; i < MAX_GAME_NUM; i++) {
-				if (games[i] != nullptr && !games[i] -> finished) {
-					game_list_msg["games"][i]["id"] = games[i] -> game_id;
-					game_list_msg["games"][i]["players_count"] = (int) games[i] -> players.size();
-					for (int j = 0; j < 4; j++) {
-						if (games[i] -> player_connected[j])
-							game_list_msg["games"][i]["player_nicks"][j] = games[i] -> players[j] -> player_name;
-						else
-							game_list_msg["games"][i]["player_nicks"][j] = Json::Value(Json::nullValue);
-					}
-					game_list_msg["games"][i]["started"] = games[i] -> started;
-				}
-			}
-			pthread_mutex_unlock(&games_lock);
-
-			send_message (rcv_sck, game_list_msg);
+			broadcast_game_list (rcv_sck);
 		}
 		break;
 
@@ -449,6 +470,10 @@ void *main_loop(void *arg) {
 			perror ("Main socket accept error \n");
 			continue;
 		}
+
+		pthread_mutex_lock (&sockets_lock);
+		all_sockets.push_back (rcv_sck);
+		pthread_mutex_unlock (&sockets_lock);
 
 		pthread_t client_thread;
 		if (pthread_create (&client_thread, NULL, client_loop, &rcv_sck)) {

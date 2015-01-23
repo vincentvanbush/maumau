@@ -35,7 +35,7 @@ GameWindow::GameWindow(TcpClient *tcpClient, Json::Value &join_ok_msg, QWidget *
         cardCounts[i] = 5;
     }
 
-    for (int i = 0; i < join_ok_msg["player_names"].size(); i++) {
+    for (unsigned i = 0; i < join_ok_msg["player_names"].size(); i++) {
         if (!join_ok_msg["player_names"][i].isNull()) {
             player_names[i] = QString(join_ok_msg["player_names"][i].asCString());
             getLabelForSlot(i)->setText(player_names[i]);
@@ -170,7 +170,7 @@ void GameWindow::updateCards(int turn, bool covered) {
     }
 
     if (turn == mySlot && !covered) {
-        for (int i = 0; i < cardsInHand.size(); i++) {
+        for (unsigned i = 0; i < cardsInHand.size(); i++) {
             int value = cardsInHand[i].value;
             int color = cardsInHand[i].color;
             addCardToLayout(value, color, cardLayout);
@@ -190,7 +190,7 @@ void GameWindow::updateTable() {
         delete child;
     }
     std::vector<card> &table = cardsInTable;
-    for (int i = 0; i < table.size(); i++) {
+    for (unsigned i = 0; i < table.size(); i++) {
         int value = table[i].value;
         int color = table[i].color;
         addCardToLayout(value, color, ui->tableCardLayout);
@@ -207,6 +207,7 @@ QLayout *GameWindow::getCardLayoutForSlot(int slotNumber) {
     if (dist == 1) return ui->leftCardLayout;
     if (dist == 2) return ui->topCardLayout;
     if (dist == 3) return ui->rightCardLayout;
+    return nullptr;
 }
 
 QLabel *GameWindow::getLabelForSlot(int slotNumber) {
@@ -219,6 +220,7 @@ QLabel *GameWindow::getLabelForSlot(int slotNumber) {
     if (dist == 1) return ui->leftPlayerLabel;
     if (dist == 2) return ui->topPlayerLabel;
     if (dist == 3) return ui->rightPlayerLabel;
+    return nullptr;
 }
 
 void GameWindow::on_moveButton_clicked()
@@ -354,7 +356,7 @@ void GameWindow::onMoveMessageRecv(Json::Value &msg)
 
     std::vector<card> cardsInHandCopy = cardsInHand;
     if (currentTurn == mySlot) {
-        for (int i = 0; i < playedCards.size(); i++) {
+        for (unsigned i = 0; i < playedCards.size(); i++) {
             card playedCard = playedCards[i];
             cardsInHand.erase(
                 std::remove_if(
@@ -419,16 +421,8 @@ void GameWindow::onNextTurnMessageRecv(Json::Value &msg) {
     ui->cardsLabel->setText(QString::number(cards_for_next));
 }
 
-void GameWindow::onInvalidMoveMessageRecv(Json::Value &msg) {
-    QMessageBox box;
-    box.setText("This move is invalid.");
-    box.setInformativeText("Please try again with a valid one.");
-    box.setStandardButtons(QMessageBox::Ok);
-    box.setIcon(QMessageBox::Warning);
-    box.exec();
-}
-
 void GameWindow::closeEvent(QCloseEvent *evt) {
+    qDebug() << evt;
     tcpClient->sendLeaveGameMessage(playerToken, gameToken, gameId, mySlot);
     tcpClient->disconnect(this);
 }
@@ -440,7 +434,8 @@ void GameWindow::messageBox(Json::Value &msg) {
     case INVALID_MOVE:
         box.setIcon(QMessageBox::Warning);
         box.setText("This move is invalid.");
-        box.setInformativeText("Please try again with a valid one.");
+        if (!msg["cause"].isNull())
+            box.setInformativeText(msg["cause"].asCString());
         break;
     case PLAYER_LEFT:
         box.setIcon(QMessageBox::Warning);

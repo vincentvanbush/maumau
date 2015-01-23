@@ -170,14 +170,17 @@ void *client_loop(void *arg) {
 			struct game_info* game;
 			bool valid_move;
 
+			std::string cause;
+
 			if (game_id < 0 || game_id > 49 || games[game_id] == nullptr
 				|| games[game_id] -> finished || !games[game_id] -> started) {
-				printf("Game id out of bounds or game does not exist\n");
+				cause = "Game id out of bounds or game does not exist";
+				puts (cause.c_str());
 				valid_move = false;
 			}
 			else {
 				game = games[game_id];
-				valid_move = validate_move (json_buf, games[game_id]);
+				valid_move = validate_move (json_buf, games[game_id], cause);
 			}
 
 			if (valid_move) {
@@ -243,6 +246,7 @@ void *client_loop(void *arg) {
 			else {
 				Json::Value invalid_move_msg;
 				invalid_move_msg["msg_type"] = INVALID_MOVE;
+				invalid_move_msg["cause"] = cause;
 				send_message (rcv_sck, invalid_move_msg);
 			}
 		}

@@ -57,7 +57,6 @@ private slots:
     void onPlayerLeftMessageRecv(Json::Value &);
     void onMoveMessageRecv(Json::Value &);
     void onNextTurnMessageRecv(Json::Value &);
-    void onInvalidMoveMessageRecv(Json::Value &);
 
 
     void messageBox(Json::Value &);

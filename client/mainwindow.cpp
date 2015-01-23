@@ -96,7 +96,7 @@ void MainWindow::onJoinGameButtonClicked()
 
 void MainWindow::onCannotJoinMessageRecv(Json::Value &msg)
 {
-    qDebug() << "Cannot join!";
+    qDebug() << "Cannot join! (msg type: " << msg["msg_type"].asInt() << ")";
 }
 
 void MainWindow::onJoinOKMessageRecv(Json::Value &msg)

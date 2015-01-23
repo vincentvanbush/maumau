@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 #include <deque>
+#include <string>
 
 struct game_info* new_game(int id) {
 	struct game_info* ret = new struct game_info;
@@ -104,19 +105,21 @@ struct card top_card (struct game_info* game) {
 	return game -> played_cards.front();
 }
 
-bool validate_move (Json::Value move_msg, struct game_info* game) {
+bool validate_move (Json::Value move_msg, struct game_info* game, std::string &cause) {
 	int played_cards_count = move_msg["played_cards_count"].asInt();
 	fprintf (stderr, "----------- (V) PLAYED CARDS COUNT: %d\n", played_cards_count);
 
 	// if game is null
 	if (game == nullptr) {
-		puts ("Game is null");
+		cause = "Game is null";
+		puts (cause.c_str());
 		return false;
 	}
 
 	// if played cards count > 4, message is rubbish!
 	if (move_msg["played_cards_count"] > 4) {
-		puts ("Malformed message, cards count > 4");
+		cause = "Malformed message, cards count > 4";
+		puts (cause.c_str());
 		return false;
 	}
 
@@ -133,13 +136,15 @@ bool validate_move (Json::Value move_msg, struct game_info* game) {
 
 	// Check if game is started
 	if (!game -> started) {
-		puts ("Game is not started");
+		cause = "Game is not started";
+		puts (cause.c_str());
 		return false;
 	}
 
 	// Check game token
 	if (game -> game_token != game_token) {
-		puts ("Invalid game token");
+		cause = "Invalid game token";
+		puts (cause.c_str());
 		return false;
 	}
 
@@ -150,7 +155,8 @@ bool validate_move (Json::Value move_msg, struct game_info* game) {
 		value = played_cards[i].value;
 		if (prev_value == 0) continue;
 		if (prev_value != value) {
-			puts ("Played cards have different values");
+			cause = "Played cards have different values";
+			puts (cause.c_str());
 			return false;
 		}
 	}
@@ -158,7 +164,8 @@ bool validate_move (Json::Value move_msg, struct game_info* game) {
 	// Check if player's token equals the token of player at current turn slot
 	if (player_token != game -> players[game -> turn] -> token) {
 		printf ("Expected player token %d, got %d \n", game -> players[game -> turn] -> token, player_token);
-		puts ("Wrong player token");
+		cause = "Wrong player token";
+		puts (cause.c_str());
 		return false;
 	}
 
@@ -180,7 +187,8 @@ bool validate_move (Json::Value move_msg, struct game_info* game) {
 				}
 			}
 			if (!card_eq) {
-				puts ("Player tries to send card he doesn't have");
+				cause = "Player tries to send card he doesn't have";
+				puts (cause.c_str());
 				return false;
 			}
 		}
@@ -188,21 +196,24 @@ bool validate_move (Json::Value move_msg, struct game_info* game) {
 		// No request: check top card
 		if (game -> color_request == 0 && game -> value_request == 0 && game -> turns_to_miss == 0) {
 			if (played_cards[0].color != top.color && played_cards[0].value != top.value) {
-				puts ("Top card does not match first played card");
+				cause = "Top card does not match first played card";
+				puts (cause.c_str());
 				return false;
 			}
 		}
 		// Color request: check color or play an ace
 		else if (game -> color_request != 0 && game -> color_request != played_cards[0].color) {
 			if (played_cards[0].value != ACE) {
-				puts ("There is a color request but the card is not right or an ace");
+				cause = "There is a color request but the card is not right or an ace";
+				puts (cause.c_str());
 				return false;
 			}
 		}
 		// Value request: check value or play a jack
 		else if (game -> value_request != 0 && game -> value_request != played_cards[0].value) {
 			if (played_cards[0].value != JACK) {
-				puts ("There is a value request but the card is not right or a jack");
+				cause = "There is a value request but the card is not right or a jack";
+				puts (cause.c_str());
 				return false;
 			}
 		}
@@ -211,13 +222,15 @@ bool validate_move (Json::Value move_msg, struct game_info* game) {
 			// with a 2 or 3, one can respond with 2, 3 or king
 			if (top.value <= 3 && played_cards[0].value != top.value && played_cards[0].color != top.color
 				&& played_cards[0].value != 2 && played_cards[0].value != 3 && played_cards[0].value != KING) {
-				puts ("There is a card pick challenge but no 2/3/K is played");
+				cause = "There is a card pick challenge but no 2/3/K is played";
+				puts (cause.c_str());
 				return false;
 			}
 			// with a king, one can respond with ONLY ONE KING (pike or heart)
 			else if (top.value == KING && played_cards.size() > 1 && played_cards[0].value != KING
 				&& played_cards[0].color != HEART && played_cards[0].color != PIKE) {
-				puts ("There is a card pick challenge with a king");
+				cause = "There is a card pick challenge with a king";
+				puts (cause.c_str());
 				return false;
 			}
 		}
@@ -225,7 +238,8 @@ bool validate_move (Json::Value move_msg, struct game_info* game) {
 		else if (game -> turns_to_miss > 0) {
 			// one can respond with 4s
 			if (played_cards[0].value != 4) {
-				puts ("There is a turn wait challenge but no 4 is played");
+				cause = "There is a turn wait challenge but no 4 is played";
+				puts (cause.c_str());
 				return false;
 			}
 		}
@@ -233,7 +247,8 @@ bool validate_move (Json::Value move_msg, struct game_info* game) {
 		else if (move_msg["color_request"] != 0) {
 			// played card has to be ace
 			if (played_cards[0].value != ACE) {
-				puts ("Player requests a color but doesn't give an ace");
+				cause = "Player requests a color but doesn't give an ace";
+				puts (cause.c_str());
 				return false;
 			}
 		}
@@ -241,7 +256,8 @@ bool validate_move (Json::Value move_msg, struct game_info* game) {
 		else if (move_msg["value_request"] != 0) {
 			// played card has to be jack
 			if (played_cards[0].value != JACK)
-				puts ("Player requests a value but doesn't give a jack");
+				cause = "Player requests a value but doesn't give a jack";
+				puts (cause.c_str());
 				return false;
 		}
 	}

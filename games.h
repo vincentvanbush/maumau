@@ -4,6 +4,7 @@
 #include "messages.h"
 #include <deque>
 #include <vector>
+#include <string>
 #include <netinet/in.h>
 #include <json/json.h>
 
@@ -50,7 +51,7 @@ void player_leave_game (struct player_info*, struct game_info*);
 
 void deal_cards (struct game_info*);
 
-bool validate_move (Json::Value, struct game_info*);
+bool validate_move (Json::Value, struct game_info*, std::string&);
 
 bool card_equals (struct card, struct card);
 

@@ -8,16 +8,6 @@ TcpClient::TcpClient(QString ip)
     this->serverPort = 1234;
     this->socketGone = false;
 
-    for(int i=0; i<4; i++) {
-        this->playersAtSlots[i] = nullptr;
-    }
-
-    for(int i=0; i<50; i++) {
-        this->gameExists[i] = false;
-        this->started[i] = false;
-    }
-
-
     this->tcpSocket = new QTcpSocket(this);
     connect(tcpSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(socketError(QAbstractSocket::SocketError)));
     connect(tcpSocket, SIGNAL(connected()), this, SLOT(socketConnected()));
@@ -99,7 +89,6 @@ void TcpClient::readMessage()
             emit cannotLeaveSignal(gameMessage);
             break;
         case JOIN_OK:
-            this->joinOKSignalHandle(gameMessage);
             emit joinOKSignal(gameMessage);
             break;
         case PLAYER_JOINED:
@@ -124,7 +113,6 @@ void TcpClient::readMessage()
             emit playerLeftSignal(gameMessage);
             break;
         case GAME_LIST:
-            this->gameListSignalHandle(gameMessage);
             emit gameListSignal(gameMessage);
             break;
         case MOVE:
@@ -153,38 +141,28 @@ void TcpClient::sendRequestGamesMessage()
     sendMessage(gameMessage);
 }
 
-void TcpClient::sendReadyMessage()
+void TcpClient::sendReadyMessage(int playerToken, int gameToken, int gameId)
 {
     Json::Value gameMessage;
     gameMessage["msg_type"] = READY;
-    gameMessage["player_token"] = this->playerToken;
-    gameMessage["game_token"] = this->gameToken;
-    gameMessage["game_id"] = this->gameIdentifier;
+    gameMessage["player_token"] = playerToken;
+    gameMessage["game_token"] = gameToken;
+    gameMessage["game_id"] = gameId;
     sendMessage(gameMessage);
 }
 
-void TcpClient::sendLeaveGameMessage()
+void TcpClient::sendLeaveGameMessage(int playerToken, int gameToken, int gameId, int slotNumber)
 {
     Json::Value gameMessage;
-    gameMessage["msg_type"] = 2;
-    gameMessage["player_token"] = this->playerToken;
-    gameMessage["game_token"] = this->gameToken;
-    gameMessage["game_id"] = this->gameIdentifier;
-    gameMessage["slot"] = this->slotNumber;
-
-
-
-    // updating info about this game
-    this->playersCount[this->gameIdentifier]--;
-    for(int i=0; i<4; i++) {
-        this->playerNick[this->gameIdentifier][i][0] = '\0';
-    }
-    this->started[this->gameIdentifier] = false;
-
+    gameMessage["msg_type"] = LEAVE_GAME;
+    gameMessage["player_token"] = playerToken;
+    gameMessage["game_token"] = gameToken;
+    gameMessage["game_id"] = gameId;
+    gameMessage["slot"] = slotNumber;
     sendMessage(gameMessage);
 }
 
-void TcpClient::sendMoveMessage(short playedCardsCount, card* playedCards, short colorRequest, short valueRequest)
+void TcpClient::sendMoveMessage(int playerToken, int gameToken, int gameId, short playedCardsCount, card* playedCards, short colorRequest, short valueRequest)
 {
     Json::Value gameMessage;
 
@@ -197,44 +175,12 @@ void TcpClient::sendMoveMessage(short playedCardsCount, card* playedCards, short
     gameMessage["value_request"] = valueRequest;
 
     gameMessage["msg_type"] = 11;
-    gameMessage["player_token"] = this->playerToken;
-    gameMessage["game_token"] = this->gameToken;
-    gameMessage["game_id"] = this->gameIdentifier;
+    gameMessage["player_token"] = playerToken;
+    gameMessage["game_token"] = gameToken;
+    gameMessage["game_id"] = gameId;
 
     sendMessage(gameMessage);
 }
-
-
-// methods handling communicates from server
-void TcpClient::gameListSignalHandle(Json::Value& msg)
-{
-    Json::FastWriter writer;
-    std::string txt = writer.write(msg);
-    qDebug() << QString::fromStdString(txt);
-    Json::Value &games = msg["games"];
-    std::string gam = writer.write(games);
-    qDebug() << QString::fromStdString(gam);
-    if(!games.isNull())
-        for(unsigned i=0; i<games.size(); i++) {
-            gameExists[i] = !games[i].isNull();
-            gameId[i] = games[i]["id"].asInt();
-            playersCount[i] = games[i]["players_count"].asInt();
-            for(int j=0; j<playersCount[i]; j++) {
-                strcpy(playerNick[i][j], games[i]["player_nicks"][j].asCString());
-            }
-            started[i] = games[i]["started"].asBool();
-        }
-}
-
-void TcpClient::joinOKSignalHandle(Json::Value& joinOK)
-{
-    this->slotNumber = joinOK["slot_number"].asInt();
-    this->playerToken = joinOK["player_token"].asInt();
-    this->gameToken = joinOK["game_token"].asInt();
-    this->gameIdentifier = joinOK["game_id"].asInt();
-
-}
-
 
 // methods establishing connection with server
 void TcpClient::socketError(QAbstractSocket::SocketError err)
@@ -243,14 +189,6 @@ void TcpClient::socketError(QAbstractSocket::SocketError err)
     qDebug() << err;
     tcpSocket->deleteLater();
     emit socketErrorSignal(err);
-//    QMessageBox box;
-//    box.setText("Connection error");
-//    QString errName;
-//    QDebug(&errName) << err;
-//    box.setInformativeText(errName);
-//    box.setStandardButtons(QMessageBox::Ok);
-//    box.setIcon(QMessageBox::Warning);
-//    box.exec();
 }
 
 void TcpClient::socketConnected()

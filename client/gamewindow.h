@@ -20,6 +20,9 @@ public:
     explicit GameWindow(TcpClient *tcpClient, Json::Value &join_ok_msg, QWidget *parent = 0);
     ~GameWindow();
 
+protected:
+    void closeEvent(QCloseEvent*);
+
 private:
     Ui::GameWindow *ui;
     void addCardToLayout(int, int, QLayout*);
@@ -37,8 +40,11 @@ private:
     std::vector<card> cardsInTable;
 
     int mySlot;
+    int playerToken;
+    int gameToken;
     std::map<int, QString> player_names;
     int currentTurn;
+    int gameId;
     std::map<int, int> cardCounts;
 
 private slots:
@@ -48,9 +54,13 @@ private slots:
     void onPickCardsMessageRecv(Json::Value &);
     void onStartGameMessageRecv(Json::Value &);
     void onPlayerJoinedMessageRecv(Json::Value &);
+    void onPlayerLeftMessageRecv(Json::Value &);
     void onMoveMessageRecv(Json::Value &);
     void onNextTurnMessageRecv(Json::Value &);
-    void onInvalidMoveMessageRecv(Json::Value&);
+    void onInvalidMoveMessageRecv(Json::Value &);
+
+
+    void messageBox(Json::Value &);
 };
 
 #endif // GAMEWINDOW_H

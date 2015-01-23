@@ -21,10 +21,7 @@ MainWindow::MainWindow(QWidget *parent) :
             this->playerNames[i][j] = nullptr;
         this->gameStarted[i] = nullptr;
     }
-    this->fillGamesTable();
-
-
-
+    //this->fillGamesTable();
 
     // signals from interface
     connect(ui->requestGamesButton, SIGNAL(clicked()), this, SLOT(onRequestGamesButtonClicked()));
@@ -36,7 +33,6 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(tcpClient, SIGNAL(joinOKSignal(Json::Value &)), this, SLOT(onJoinOKMessageRecv(Json::Value &)));
     connect(tcpClient, SIGNAL(gameListSignal(Json::Value &)), this, SLOT(onGameListMessageRecv(Json::Value &)));
     connect(tcpClient, SIGNAL(socketErrorSignal(QAbstractSocket::SocketError)), this, SLOT(onSocketErrorSignal(QAbstractSocket::SocketError)));
-
 
     tcpClient->sendRequestGamesMessage();
 }
@@ -75,16 +71,15 @@ void MainWindow::onJoinGameButtonClicked()
 
     QModelIndexList ind = ui->gamesListView->selectionModel()->selectedRows();
     if(ind.size() != 0) {
-        QModelIndex index = this->model.index(ind.at(0).row(),0,QModelIndex());
+        QModelIndex index = ui->gamesListView->model()->index(ind.at(0).row(),0,QModelIndex());
         if(playerName != "") {
             gameID = ui->gamesListView->model()->data(index).toString().toInt();
-            if(tcpClient->playersCount[gameID] < 4) {
+            if(playersCount[gameID] < 4) {
                 tcpClient->sendJoinGameMessage(playerName, gameID);
             }
             else {
                 qDebug() << "Too many players in this game";
             }
-
         }
         else {
             qDebug() << "Nie wpisałeś imienia";
@@ -106,37 +101,33 @@ void MainWindow::onCannotJoinMessageRecv(Json::Value &msg)
 
 void MainWindow::onJoinOKMessageRecv(Json::Value &msg)
 {
-    QString slotNumber = QString::number(tcpClient->slotNumber);
-    QString playerToken = QString::number(tcpClient->playerToken);
-    QString gameToken = QString::number(tcpClient->gameToken);
-    int gameId = msg["game_id"].asInt();
-
-    int numberOfOtherPlayersInGame = 0;
-    for(std::map<int, std::string*>::iterator it = tcpClient->playersAtSlots.begin(); it != tcpClient->playersAtSlots.end(); ++it) {
-        if(it->second != nullptr && it->first != tcpClient->slotNumber) {
-            numberOfOtherPlayersInGame ++;
-        }
-    }
-
-   // ui->nameEdit->setText(QString::fromUtf8(tcpClient->playerName));
-    tcpClient->gameIdentifier =gameId;
     GameWindow *gameWindow = new GameWindow(this->tcpClient, msg, this);
     gameWindow->show();
-
-
 }
 
 void MainWindow::onGameListMessageRecv(Json::Value &msg)
 {
-    QString gameId;
-    QString playersCount;
-    QString playerName;
-    this->fillGamesTable();
-}
+    Json::Value &games = msg["games"];
+    //QStandardItemModel model;
 
-void MainWindow::fillGamesTable()
-{
+    if(!games.isNull()) {
+        for(unsigned i=0; i<games.size(); i++) {
+            gameExists[i] = !games[i].isNull();
+            qDebug("Game %d exists? %d", i, gameExists[i]);
 
+            if (!gameExists[i]) continue;
+            gameId[i] = games[i]["id"].asInt();
+            playersCount[i] = games[i]["players_count"].asInt();
+            for(int j=0; j<4; j++) {
+                if (games[i]["player_nicks"][j].isNull()) strcpy(playerNick[i][j], "");
+                else strcpy(playerNick[i][j], games[i]["player_nicks"][j].asCString());
+            }
+            started[i] = games[i]["started"].asBool();
+        }
+        for (unsigned i=games.size(); i < 50; i++) {
+            gameExists[i] = false;
+        }
+    }
     for(int i=0; i<50; i++) {
         if(this->gamesIds[i] != nullptr) {
             delete this->gamesIds[i];
@@ -155,7 +146,7 @@ void MainWindow::fillGamesTable()
     }
 
     this->horizontalHeader.clear();
-    this->model.clear();
+    model.clear();
 
     this->horizontalHeader.append("Game id");
     this->horizontalHeader.append("Player 1");
@@ -164,37 +155,38 @@ void MainWindow::fillGamesTable()
     this->horizontalHeader.append("Player 4");
     this->horizontalHeader.append("Game status");
 
+    model.index(1,1,model.index(0,0));
+    model.setHorizontalHeaderLabels(this->horizontalHeader);
 
-
-    this->model.index(1,1,model.index(0,0));
-    this->model.setHorizontalHeaderLabels(this->horizontalHeader);
-
-    int rowNumber = 0;
-
+    int rowCount = 0;
     for(int i=0; i<50; i++) {
-        if(this->tcpClient->gameExists[i]) {
-            this->gamesIds[i] = new QStandardItem(QString(QString::number(tcpClient->gameId[i])));
-            this->model.setItem(rowNumber,0,this->gamesIds[i]);
 
-            for(int j=0; j<tcpClient->playersCount[i]; j++) {
-                this->playerNames[i][j] = new QStandardItem(QString(QString::fromUtf8(tcpClient->playerNick[i][j])));
-                this->model.setItem(rowNumber,j+1,this->playerNames[i][j]);
+        if(this->gameExists[i]) {
+            qDebug() << "ID: " << i;
+            this->gamesIds[i] = new QStandardItem(QString(QString::number(gameId[i])));
+            model.setItem(rowCount,0,this->gamesIds[i]);
+
+            for(int j=0; j<4; j++) {
+                this->playerNames[i][j] = new QStandardItem(QString(QString::fromUtf8(playerNick[i][j])));
+                model.setItem(rowCount,j+1,this->playerNames[i][j]);
             }
 
-            if(tcpClient->started[i])
+            if(started[i])
                 this->gameStarted[i] = new QStandardItem(QString("In progress"));
             else
                 this->gameStarted[i] = new QStandardItem(QString("Not started"));
-            this->model.setItem(rowNumber,5,this->gameStarted[i]);
-            rowNumber++;
+            model.setItem(rowCount,5,this->gameStarted[i]);
+            rowCount++;
+        }
+        else {
+            model.removeRow(i);
         }
     }
 
-    ui->gamesListView->setModel(&this->model);
+    ui->gamesListView->setModel(&model);
     ui->gamesListView->resizeRowsToContents();
     ui->gamesListView->resizeColumnsToContents();
 }
-
 
 // Helpers
 std::string MainWindow::convertCardValue(int value)
@@ -224,12 +216,5 @@ std::string MainWindow::convertCardValue(int value)
 void MainWindow::onSocketErrorSignal(QAbstractSocket::SocketError err) {
     QString errName;
     QDebug(&errName) << err;
-    /*QMessageBox box;
-    box.setText("Connection error");
-
-    box.setInformativeText(errName);
-    box.setStandardButtons(QMessageBox::Ok);
-    box.setIcon(QMessageBox::Warning);
-    box.exec();*/
     this->statusBar()->showMessage("Connection error: " + errName);
 }

@@ -21,7 +21,7 @@ struct player_info {
 struct game_info {
 	int game_token;
 	int game_id;
-	std::vector <struct player_info*> players;
+	std::map<int, struct player_info*> players;
 	std::deque <struct card> played_cards;
 	std::deque <struct card> deck;
 	short turn;
@@ -31,6 +31,8 @@ struct game_info {
 	short cards_to_pick;
 	short request_ttl;
 	bool started;
+	bool player_connected[4];
+	bool finished;
 };
 
 struct game_info* new_game (int);
@@ -38,6 +40,8 @@ struct game_info* new_game (int);
 struct player_info* new_player (char*);
 
 short player_join_game (struct player_info*, struct game_info*);
+
+void player_leave_game (struct player_info*, struct game_info*);
 
 void deal_cards (struct game_info*);
 

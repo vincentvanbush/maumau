@@ -17,6 +17,8 @@ struct game_info* new_game(int id) {
 	ret->turns_to_miss = 0;
 	ret->cards_to_pick = 0;
 	ret->request_ttl = 0;
+	for (int i = 0; i < 4; i++)
+		ret->player_connected[i] = false;
 
 	// shuffle the deck
 	struct card card_array[52] = {
@@ -41,6 +43,7 @@ struct game_info* new_game(int id) {
     std::shuffle (cards.begin(), cards.end(), g);
     ret->deck = cards;
     ret->started = false;
+    ret->finished = false;
 
 	return ret;
 }
@@ -59,12 +62,28 @@ struct player_info* new_player (char* player_name) {
 }
 
 short player_join_game (struct player_info* player, struct game_info* game) {
-	game->players.push_back(player);
-	return (short) game->players.size() - 1;
+	for (int i = 0; i < 4; i++) {
+		if (!game->player_connected[i]) {
+			game->players[i] = player;
+			game->player_connected[i] = true;
+			return i;
+		}
+	}
+	return -1;
+}
+
+void player_leave_game (struct player_info* player, struct game_info* game) {
+	for (int i = 0; i < 4; i++) {
+		if (game->players[i] == player) {
+			game->player_connected[i] = false;
+			game->players.erase (i);
+			return;
+		}
+	}
 }
 
 void deal_cards (struct game_info* game) {
-	std::vector <struct player_info*> players = game -> players;
+	std::map <int, struct player_info*> players = game -> players;
 	std::deque <struct card>* deck = &game -> deck;
 
 	for (int i = 0; i < 5; i++) {
@@ -378,6 +397,8 @@ std::deque <struct card> pick_n_cards (struct game_info* game, short n, short pl
 }
 
 bool is_finished (struct game_info* game) {
+	if (game -> players.size() == 0)
+		return true;
 	short ret = finished_players (game);
 	if (ret == game -> players.size() - 1)
 		return true;

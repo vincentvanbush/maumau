@@ -64,7 +64,7 @@ void *client_loop(void *arg) {
 				}
 				int i;
 				for (i = 0; i < MAX_GAME_NUM; i++) {
-					if (games[i] == nullptr) break;
+					if (games[i] == nullptr || games[i]->finished) break;
 				}
 				game_id = i;
 				game = new_game(i);
@@ -73,7 +73,7 @@ void *client_loop(void *arg) {
 				games_num++;
 				pthread_mutex_unlock(&games_lock);
 			}
-			else if (games[game_id] == nullptr) {
+			else if (games[game_id] == nullptr || games[game_id]->finished) {
 				Json::Value error_msg;
 				error_msg["msg_type"] = CANNOT_JOIN;
 				send_message (rcv_sck, error_msg);
@@ -137,7 +137,8 @@ void *client_loop(void *arg) {
 			struct game_info* game;
 			bool valid_move;
 
-			if (game_id < 0 || game_id > 49 || games[game_id] == nullptr) {
+			if (game_id < 0 || game_id > 49 || games[game_id] == nullptr
+				|| games[game_id] -> finished || !games[game_id] -> started) {
 				printf("Game id out of bounds or game does not exist\n");
 				valid_move = false;
 			}
@@ -201,9 +202,8 @@ void *client_loop(void *arg) {
 						send_message (game -> players[i] -> socket, game_end_msg);
 					}
 
-					puts ("Deleting game");
-					delete games[game_id];
-					games[game_id] = nullptr;
+					games[game_id] -> started = false;
+					games[game_id] -> finished = true;
 				}
 
 			}
@@ -225,52 +225,76 @@ void *client_loop(void *arg) {
 			bool invalid_message = false;
 			struct game_info* game;
 
+			pthread_mutex_lock(&games_lock);
 			if (slot < 0 || slot > 3 || game_id < 0 || game_id > 49 || games[game_id] == nullptr
-				|| games[game_id] -> game_token != game_token) {
+				|| games[game_id] -> finished || games[game_id] -> game_token != game_token) {
+				puts ("Checkpoint 1");
 				printf("No such game or invalid slot\n");
 				invalid_message = true;
 			}
 			else {
 				game = games[game_id];
 				if (game -> players[slot] -> token != player_token) { // wrong turn
-					printf("Wrong turn\n");
+					printf("Slot number doesn't match player token at given slot\n");
 					invalid_message = true;
 				}
+				puts ("Checkpoint 2");
 			}
 
 			if (invalid_message) {
-				Json::Value cannot_leave_msg;
-				cannot_leave_msg["msg_type"] = CANNOT_LEAVE;
-				send_message (rcv_sck, cannot_leave_msg);
+				puts ("Invalid leave message");
 			}
 			else {
-				game -> players[slot] -> left = true;
+				struct player_info *player = game -> players[slot];
+				puts ("Checkpoint 4");
+				player_leave_game (player, game);
+				puts ("Checkpoint 5");
+				if (game -> players.size() > 0) { // only if any player is in game
+					// Broadcast message
+					Json::Value player_left_msg;
+					player_left_msg["msg_type"] = PLAYER_LEFT;
+					player_left_msg["slot"] = slot;
+				
+					for (std::map<int, struct player_info*>::iterator it = game -> players.begin();
+							it != game -> players.end();
+							it++) {
+						if ((*it).second -> token != player_token) {
+							puts ("Sending player left message");
+							send_message((*it).second -> socket, player_left_msg);
+						}
 
-				// Broadcast message
-				Json::Value player_left_msg;
-				player_left_msg["msg_type"] = PLAYER_LEFT;
-				player_left_msg["slot"] = slot;
-
-				for (int i = 0; i < game -> players.size(); i++) {
-					if (i != slot) {
-						puts ("PLEJER LEFT");
-						send_message(game -> players[i] -> socket, player_left_msg);
 					}
+					puts ("Checkpoint 6");
 
-				}
+					if (game -> started && !player -> finished) {
+						puts ("Checkpoint 7");
+						Json::Value game_end_msg;
+						game_end_msg["msg_type"] = GAME_END;
+						game_end_msg["game_token"] = game_token;
+						game_end_msg["game_id"] = game_id;
 
-				if (!game -> players[slot] -> finished) {
-					Json::Value game_end_msg;
-					game_end_msg["msg_type"] = GAME_END;
-					for (int i = 0; i < game -> players.size(); i++) {
-						if (i != slot)
-							send_message(game -> players[i] -> socket, game_end_msg);
-						puts ("Deleting game");
-						delete games[game_id];
-						games[game_id] = nullptr;
+						for (std::map<int, struct player_info*>::iterator it = game -> players.begin();
+							it != game -> players.end();
+							it++) {
+							puts ("Checkpoint 8");
+							if ((*it).second -> token != player_token)
+								send_message((*it).second -> socket, game_end_msg);
+							
+						}
+
+						games[game_id] -> started = false;
+						games[game_id] -> finished = true;
+
 					}
 				}
+				else {
+					games[game_id] -> started = false;
+					games[game_id] -> finished = true;
+				}
+				puts ("Checkpoint 9");
+
 			}
+			pthread_mutex_unlock(&games_lock);
 
 		}
 		break;
@@ -297,7 +321,7 @@ void *client_loop(void *arg) {
 				// check if received player token is valid
 				invalid_player_token = true;
 
-				if (game == nullptr || game -> game_token != game_token) {
+				if (game == nullptr || game -> finished || game -> game_token != game_token) {
 					// if received game token is different to the actual one, send error
 					invalid_player_token = true;
 				}
@@ -371,11 +395,14 @@ void *client_loop(void *arg) {
 			game_list_msg["games"] = Json::Value(Json::arrayValue);
 			pthread_mutex_lock(&games_lock);
 			for (int i = 0; i < MAX_GAME_NUM; i++) {
-				if (games[i] != nullptr) {
+				if (games[i] != nullptr && !games[i] -> finished) {
 					game_list_msg["games"][i]["id"] = games[i] -> game_id;
 					game_list_msg["games"][i]["players_count"] = (int) games[i] -> players.size();
-					for (int j = 0; j < games[i] -> players.size(); j++) {
-						game_list_msg["games"][i]["player_nicks"][j] = games[i] -> players[j] -> player_name;
+					for (int j = 0; j < 4; j++) {
+						if (games[i] -> player_connected[j])
+							game_list_msg["games"][i]["player_nicks"][j] = games[i] -> players[j] -> player_name;
+						else
+							game_list_msg["games"][i]["player_nicks"][j] = Json::Value(Json::nullValue);
 					}
 					game_list_msg["games"][i]["started"] = games[i] -> started;
 				}
@@ -448,7 +475,7 @@ int main(int argc, char* argv[]) {
 		printf ("Enter game id to show state ");
 		scanf ("%d", &id);
 
-		if (games[id] == nullptr) {
+		if (games[id] == nullptr || games[id] -> finished) {
 			puts("Game doesn't exist.");
 			continue;
 		}

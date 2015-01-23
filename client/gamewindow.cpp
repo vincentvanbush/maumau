@@ -21,13 +21,15 @@ GameWindow::GameWindow(TcpClient *tcpClient, Json::Value &join_ok_msg, QWidget *
     connect(tcpClient, SIGNAL(pickCardsSignal(Json::Value &)), this, SLOT(onPickCardsMessageRecv(Json::Value &)));
     connect(tcpClient, SIGNAL(starGameSignal(Json::Value &)), this, SLOT(onStartGameMessageRecv(Json::Value &)));
     connect(tcpClient, SIGNAL(playerJoinedSignal(Json::Value &)), this, SLOT(onPlayerJoinedMessageRecv(Json::Value &)));
+    connect(tcpClient, SIGNAL(playerLeftSignal(Json::Value &)), this, SLOT(onPlayerLeftMessageRecv(Json::Value&)));
     connect(tcpClient, SIGNAL(moveSignal(Json::Value&)), this, SLOT(onMoveMessageRecv(Json::Value&)));
     connect(tcpClient, SIGNAL(nextTurnSignal(Json::Value&)), this, SLOT(onNextTurnMessageRecv(Json::Value&)));
-    connect(tcpClient, SIGNAL(invalidMoveSignal(Json::Value&)), this, SLOT(onInvalidMoveMessageRecv(Json::Value&)));
-
-
+    connect(tcpClient, SIGNAL(invalidMoveSignal(Json::Value&)), this, SLOT(messageBox(Json::Value&)));
 
     this->mySlot = join_ok_msg["slot_number"].asInt();
+    this->playerToken = join_ok_msg["player_token"].asInt();
+    this->gameToken = join_ok_msg["game_token"].asInt();
+    this->gameId = join_ok_msg["game_id"].asInt();
 
     for (int i = 0; i < 4; i++) {
         cardCounts[i] = 5;
@@ -42,11 +44,9 @@ GameWindow::GameWindow(TcpClient *tcpClient, Json::Value &join_ok_msg, QWidget *
     }
     updateCards(mySlot, true);
 
-    /* TODO: implement those
-    connect(tcpClient, SIGNAL(cannotReadySignal()), this, SLOT(onCannotReadyMessageRecv()));
-    connect(tcpClient, SIGNAL(cannotLeaveSignal()), this, SLOT(onCannotLeaveMessageRecv()));
-    connect(tcpClient, SIGNAL(gameEndSignal()), this, SLOT(onGameEndMessageRecv()));
-    connect(tcpClient, SIGNAL(playerLeftSignal()), this, SLOT(onPlayerLeftMessageRecv()));*/
+    connect(tcpClient, SIGNAL(cannotReadySignal(Json::Value &)), this, SLOT(messageBox(Json::Value &)));
+    connect(tcpClient, SIGNAL(gameEndSignal(Json::Value &)), this, SLOT(messageBox(Json::Value &)));
+    connect(tcpClient, SIGNAL(playerLeftSignal()), this, SLOT(messageBox(Json::Value &)));
 }
 
 GameWindow::~GameWindow()
@@ -254,7 +254,7 @@ void GameWindow::on_moveButton_clicked()
 
     // VALIDATION
 
-    tcpClient->sendMoveMessage(playedCardsCount, playedCards, colorRequest, valueRequest);
+    tcpClient->sendMoveMessage(playerToken, gameToken, gameId, playedCardsCount, playedCards, colorRequest, valueRequest);
 
     //this->readCards();
 }
@@ -262,7 +262,7 @@ void GameWindow::on_moveButton_clicked()
 
 void GameWindow::on_readyButton_clicked()
 {
-    tcpClient->sendReadyMessage();
+    tcpClient->sendReadyMessage(playerToken, gameToken, gameId);
     ui->readyButton->setDisabled(true);
 }
 
@@ -318,6 +318,24 @@ void GameWindow::onPlayerJoinedMessageRecv(Json::Value &msg)
 
     updateCards(playerSlot);
 }
+
+void GameWindow::onPlayerLeftMessageRecv(Json::Value &msg)
+{
+    int playerSlot = msg["slot"].asInt();
+    player_names[playerSlot] = "";
+    QLabel *playerLabel = getLabelForSlot(playerSlot);
+    playerLabel->setText("");
+
+    QLayout *cardLayout = getCardLayoutForSlot(playerSlot);
+
+    QLayoutItem *child;
+    while ((child = cardLayout->takeAt(0)) != 0) {
+        child->widget()->hide();
+        cardLayout->removeWidget(child->widget());
+        delete child;
+    }
+}
+
 
 void GameWindow::onMoveMessageRecv(Json::Value &msg)
 {
@@ -407,5 +425,42 @@ void GameWindow::onInvalidMoveMessageRecv(Json::Value &msg) {
     box.setInformativeText("Please try again with a valid one.");
     box.setStandardButtons(QMessageBox::Ok);
     box.setIcon(QMessageBox::Warning);
+    box.exec();
+}
+
+void GameWindow::closeEvent(QCloseEvent *evt) {
+    tcpClient->sendLeaveGameMessage(playerToken, gameToken, gameId, mySlot);
+    tcpClient->disconnect(this);
+}
+
+void GameWindow::messageBox(Json::Value &msg) {
+    QMessageBox box;
+    box.setStandardButtons(QMessageBox::Ok);
+    switch (msg["msg_type"].asInt()) {
+    case INVALID_MOVE:
+        box.setIcon(QMessageBox::Warning);
+        box.setText("This move is invalid.");
+        box.setInformativeText("Please try again with a valid one.");
+        break;
+    case PLAYER_LEFT:
+        box.setIcon(QMessageBox::Warning);
+        box.setText("Player left");
+        break;
+    case CANNOT_READY:
+        box.setIcon(QMessageBox::Warning);
+        box.setText("Cannot ready");
+        break;
+    case GAME_END:
+        box.setIcon(QMessageBox::Information);
+        box.setText("Game end");
+        break;
+    case CANNOT_LEAVE:
+        box.setIcon(QMessageBox::Warning);
+        box.setText("Cannot leave");
+        break;
+    default:
+        box.setIcon(QMessageBox::Critical);
+        box.setText("Unknown message");
+    }
     box.exec();
 }

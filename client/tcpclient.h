@@ -23,59 +23,18 @@ public:
     ~TcpClient();
     void sendRequestGamesMessage();
     void sendJoinGameMessage(std::string, int);
-    void sendReadyMessage();
-    void sendLeaveGameMessage();
-    void sendMoveMessage(short, card*, short, short);
-
-    void updateHandAfterMove(short, card*);
+    void sendReadyMessage(int, int, int);
+    void sendLeaveGameMessage(int, int, int, int);
+    void sendMoveMessage(int, int, int, short, card*, short, short);
 
     void sendMessage(Json::Value&);
     Json::Value& recvMessage(int);
 
-    void cannotJoinSignalHandle(Json::Value&);
-    void cannotReadySignalHandle(Json::Value&);
-    void cannotLeaveSignalHandle(Json::Value&);
-    void joinOKSignalHandle(Json::Value&);
-    void playerJoinedSignalHandle(Json::Value&);
-    void startGameSignalHandle(Json::Value&);
-    void nextTurnSignalHandle(Json::Value&);
-    void pickCardsSignalHandle(Json::Value&);
-    //invalid move
-    void gameEndSignalHandle(Json::Value&);
-    void playerLeftSignalHandle(Json::Value&);
-    void gameListSignalHandle(Json::Value&);
-    void moveSignalHandle(Json::Value&);
-
     // information about existing games
-    bool gameExists[50];
-    int gameId[50];
-    short playersCount[50];
-    char playerNick[50][4][30];
-    bool started[50];
-
-    // information about player and current game
-    short slotNumber;
-    int playerToken;
-    int gameToken;
-
-
-    int gameIdentifier;
-    char playerName[30];
-
-    int slotOfLastJoinedPlayer;
-    char nameOfLastJoinedPlayer[30];
-
-    int slotOfLastLeftPlayer;
-    char nameOfLastLeftPlayer[30];
-
-    std::map<int, std::string*> playersAtSlots;
-
-
 
 //private slots:
 public slots:
     void readMessage();
-
 
 signals:
     void cannotJoinSignal(Json::Value &msg);
@@ -91,6 +50,7 @@ signals:
     void playerLeftSignal(Json::Value &msg);
     void gameListSignal(Json::Value &msg);
     void moveSignal(Json::Value &msg);
+
     void socketErrorSignal(QAbstractSocket::SocketError);
 
 private:

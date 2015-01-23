@@ -21,7 +21,6 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     TcpClient *tcpClient;
-
     
 //private slots:
 public slots:
@@ -42,18 +41,20 @@ private:
     short readRequest();
     std::vector<card> *readCards();
 
-    QStandardItemModel model;
-
-    QModelIndex modelIndex;
 
     QStandardItem *gamesIds[50];
     QStandardItem *playerNames[50][4];
     QStandardItem *gameStarted[50];
+    QStandardItemModel model;
 
     QStringList horizontalHeader;
 
-    void fillGamesTable();
-
+    bool gameExists[50];
+    int gameId[50];
+    short playersCount[50];
+    char playerNick[50][4][30];
+    bool started[50];
+    std::map<int, std::string*> playersAtSlots;
 
 };
 
